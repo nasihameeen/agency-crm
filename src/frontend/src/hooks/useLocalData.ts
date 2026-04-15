@@ -1,4 +1,5 @@
 import type { Client, Project } from "@/types";
+import { getDeadlineStatus } from "@/types";
 import { useCallback, useState } from "react";
 
 const CLIENTS_KEY = "agency_crm_clients";
@@ -189,6 +190,48 @@ function saveToStorage<T>(key: string, value: T): void {
   }
 }
 
+/** Compute dashboard stats from current clients and projects lists. */
+function computeStats(clients: Client[], projects: Project[]) {
+  const activeProjects = projects.filter(
+    (p) => p.status !== "Completed",
+  ).length;
+  const completedProjects = projects.filter(
+    (p) => p.status === "Completed",
+  ).length;
+  const totalEarnings = projects.reduce((sum, p) => sum + p.paidAmount, 0);
+
+  // Overdue: deadline passed AND not yet completed
+  const overdueProjects = projects.filter(
+    (p) =>
+      p.status !== "Completed" && getDeadlineStatus(p.deadline) === "Overdue",
+  ).length;
+
+  // Pending payments: sum of remaining balances on non-completed projects
+  const pendingPaymentsTotal = projects
+    .filter((p) => p.status !== "Completed")
+    .reduce((sum, p) => sum + Math.max(0, p.budget - p.paidAmount), 0);
+
+  // Tasks completed %: across ALL projects
+  let totalTasks = 0;
+  let doneTasks = 0;
+  for (const p of projects) {
+    totalTasks += p.tasks.length;
+    doneTasks += p.tasks.filter((t) => t.done).length;
+  }
+  const tasksCompletedPercent =
+    totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 1000) / 10; // 1 decimal
+
+  return {
+    totalClients: clients.length,
+    activeProjects,
+    completedProjects,
+    totalEarnings,
+    overdueProjects,
+    pendingPaymentsTotal,
+    tasksCompletedPercent,
+  };
+}
+
 export function useLocalData() {
   const [clients, setClients] = useState<Client[]>(() =>
     loadFromStorage(CLIENTS_KEY, SAMPLE_CLIENTS),
@@ -240,9 +283,12 @@ export function useLocalData() {
     });
   }, []);
 
+  const stats = computeStats(clients, projects);
+
   return {
     clients,
     projects,
+    stats,
     saveClient,
     deleteClient,
     saveProject,

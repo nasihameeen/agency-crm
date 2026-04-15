@@ -1,6 +1,9 @@
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DeadlineBadge } from "@/components/DeadlineBadge";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TaskProgressBar } from "@/components/TaskProgressBar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,10 +25,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
 import type { Client, Project, ProjectStatus } from "@/types";
+import { getPaymentStatus } from "@/types";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  BarChart3,
+  CalendarDays,
+  DollarSign,
   FolderOpen,
+  Layers,
   Pencil,
   Plus,
   StickyNote,
@@ -45,6 +53,23 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "Completed", label: "Completed" },
 ];
 
+function formatRelativeDate(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(ts).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatCurrency(amount: number): string {
+  return `$${amount.toLocaleString("en-US")}`;
+}
+
 export function ClientDetail() {
   const { id } = useParams({ from: "/clients/$id" });
   const navigate = useNavigate();
@@ -54,6 +79,19 @@ export function ClientDetail() {
 
   const client = clients.find((c) => c.id === id);
   const clientProjects = projects.filter((p) => p.clientId === id);
+
+  // Analytics computations
+  const totalRevenue = clientProjects.reduce(
+    (sum, p) => sum + (p.paidAmount ?? 0),
+    0,
+  );
+  const activeProjects = clientProjects.filter(
+    (p) => p.status !== "Completed",
+  ).length;
+  const lastActivityTs =
+    clientProjects.length > 0
+      ? Math.max(...clientProjects.map((p) => p.createdAt))
+      : null;
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -168,6 +206,7 @@ export function ClientDetail() {
         </Button>
       </div>
 
+      {/* Client Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -214,6 +253,7 @@ export function ClientDetail() {
         </div>
       </div>
 
+      {/* Contact Info */}
       <div className="grid sm:grid-cols-2 gap-3">
         <Card padding="sm">
           <p className="text-xs text-muted-foreground">Email</p>
@@ -227,6 +267,72 @@ export function ClientDetail() {
             {client.phone || "—"}
           </p>
         </Card>
+      </div>
+
+      {/* Analytics Cards */}
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+        data-ocid="client_detail.analytics.section"
+      >
+        <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <Layers className="size-3.5 text-sky-500" />
+            <span className="text-xs font-medium text-sky-600 uppercase tracking-wide">
+              Total Projects
+            </span>
+          </div>
+          <p
+            className="text-2xl font-bold text-sky-700"
+            data-ocid="client_detail.analytics.total_projects"
+          >
+            {clientProjects.length}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <DollarSign className="size-3.5 text-emerald-500" />
+            <span className="text-xs font-medium text-emerald-600 uppercase tracking-wide">
+              Total Revenue
+            </span>
+          </div>
+          <p
+            className="text-2xl font-bold text-emerald-700"
+            data-ocid="client_detail.analytics.total_revenue"
+          >
+            {formatCurrency(totalRevenue)}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <BarChart3 className="size-3.5 text-orange-500" />
+            <span className="text-xs font-medium text-orange-600 uppercase tracking-wide">
+              Active
+            </span>
+          </div>
+          <p
+            className="text-2xl font-bold text-orange-700"
+            data-ocid="client_detail.analytics.active_projects"
+          >
+            {activeProjects}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-purple-100 bg-purple-50 p-3 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="size-3.5 text-purple-500" />
+            <span className="text-xs font-medium text-purple-600 uppercase tracking-wide">
+              Last Activity
+            </span>
+          </div>
+          <p
+            className="text-sm font-bold text-purple-700 leading-tight mt-auto"
+            data-ocid="client_detail.analytics.last_activity"
+          >
+            {lastActivityTs ? formatRelativeDate(lastActivityTs) : "—"}
+          </p>
+        </div>
       </div>
 
       {/* Projects */}
@@ -247,13 +353,24 @@ export function ClientDetail() {
         </div>
         {clientProjects.length === 0 ? (
           <Card
-            className="text-center py-8"
+            className="text-center py-10"
             data-ocid="client_detail.projects.empty_state"
           >
-            <FolderOpen className="size-7 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              No projects for this client.
+            <FolderOpen className="size-9 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground mb-1">
+              No projects yet
             </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Add the first project for {client.name} to get started.
+            </p>
+            <Button
+              size="sm"
+              data-ocid="client_detail.projects.empty_state.add_button"
+              onClick={() => setAddProjectOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-3.5" /> Add First Project
+            </Button>
           </Card>
         ) : (
           <div className="space-y-2">
@@ -267,16 +384,31 @@ export function ClientDetail() {
                 }
                 data-ocid={`client_detail.project.item.${i + 1}`}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate mb-1">
                       {project.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Due {new Date(project.deadline).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center flex-wrap gap-1.5 mb-2">
+                      <StatusBadge status={project.status} size="sm" />
+                      <PaymentBadge
+                        status={getPaymentStatus(
+                          project.budget,
+                          project.paidAmount,
+                        )}
+                      />
+                      <DeadlineBadge
+                        deadline={project.deadline}
+                        status={project.status}
+                      />
+                    </div>
+                    {project.tasks && project.tasks.length > 0 && (
+                      <TaskProgressBar
+                        tasks={project.tasks}
+                        showLabel={false}
+                      />
+                    )}
                   </div>
-                  <StatusBadge status={project.status} size="sm" />
                 </div>
               </Card>
             ))}

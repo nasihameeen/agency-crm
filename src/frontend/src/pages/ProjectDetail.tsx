@@ -1,6 +1,9 @@
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DeadlineBadge } from "@/components/DeadlineBadge";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TaskProgressBar } from "@/components/TaskProgressBar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,21 +24,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
+import { getPaymentStatus } from "@/types";
 import type { FileLink, Project, ProjectStatus, Task } from "@/types";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
-  CheckSquare,
+  Check,
+  CheckCircle2,
   DollarSign,
   Link2,
   Pencil,
   Plus,
-  Square,
   StickyNote,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "Pending", label: "Pending" },
@@ -56,10 +61,15 @@ export function ProjectDetail() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [noteText, setNoteText] = useState("");
   const [taskName, setTaskName] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+
+  const taskInputRef = useRef<HTMLInputElement>(null);
+
   const [editForm, setEditForm] = useState<
     Pick<
       Project,
@@ -85,15 +95,13 @@ export function ProjectDetail() {
     );
   }
 
-  // Narrowed project reference for use inside closures
   const p: Project = project;
 
   const remaining = p.budget - p.paidAmount;
   const paymentPct =
     p.budget > 0 ? Math.min(100, (p.paidAmount / p.budget) * 100) : 0;
+  const paymentStatus = getPaymentStatus(p.budget, p.paidAmount);
   const doneTasks = p.tasks.filter((t) => t.done).length;
-  const isOverdue =
-    p.status !== "Completed" && new Date(p.deadline) < new Date();
 
   function update(patch: Partial<Project>) {
     saveProject({ ...p, ...patch } as Project);
@@ -113,6 +121,24 @@ export function ProjectDetail() {
     deleteProject(p.id);
     success("Project deleted");
     navigate({ to: "/projects" });
+  }
+
+  function handleMarkComplete() {
+    update({ status: "Completed" });
+    success("Project marked as completed");
+  }
+
+  function handleAddPayment() {
+    const amount = Number.parseFloat(paymentAmount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      error("Enter a valid amount");
+      return;
+    }
+    const newPaid = Math.min(p.budget, p.paidAmount + amount);
+    update({ paidAmount: newPaid });
+    success(`$${amount.toLocaleString()} payment recorded`);
+    setPaymentAmount("");
+    setPaymentOpen(false);
   }
 
   function addTask() {
@@ -181,32 +207,38 @@ export function ProjectDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6" data-ocid="project_detail.page">
+    <div
+      className="p-6 space-y-6 max-w-3xl mx-auto"
+      data-ocid="project_detail.page"
+    >
+      {/* Back nav */}
       <Button
         variant="ghost"
         size="sm"
         onClick={() => navigate({ to: "/projects" })}
         data-ocid="project_detail.back_link"
-        className="gap-1.5"
+        className="gap-1.5 -ml-1"
       >
         <ArrowLeft className="size-4" /> Projects
       </Button>
 
+      {/* Project header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-display font-bold text-foreground">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <h1 className="text-2xl font-display font-bold text-foreground leading-tight">
               {p.name}
             </h1>
             <StatusBadge status={p.status} />
+            <DeadlineBadge deadline={p.deadline} status={p.status} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {client?.name ?? "Unknown client"} · {client?.businessName}
+            {client?.name ?? "Unknown client"}
+            {client?.businessName ? ` · ${client.businessName}` : ""}
           </p>
-          {isOverdue && (
-            <p className="text-xs text-orange-600 font-medium mt-1">
-              ⚠ Overdue — deadline was{" "}
-              {new Date(p.deadline).toLocaleDateString()}
+          {p.deadline && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Deadline: {new Date(p.deadline).toLocaleDateString()}
             </p>
           )}
         </div>
@@ -242,6 +274,45 @@ export function ProjectDetail() {
         </div>
       </div>
 
+      {/* Quick Actions Bar */}
+      <div
+        className="flex flex-wrap gap-2 p-3 rounded-xl bg-muted/40 border border-border/50"
+        data-ocid="project_detail.quick_actions"
+      >
+        <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
+          <Zap className="size-3.5" /> Quick Actions
+        </span>
+        {p.status !== "Completed" && (
+          <Button
+            size="sm"
+            data-ocid="project_detail.mark_complete_button"
+            onClick={handleMarkComplete}
+            className="gap-1.5 h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+          >
+            <CheckCircle2 className="size-3.5" /> Mark Complete
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          data-ocid="project_detail.quick_payment_button"
+          onClick={() => setPaymentOpen(true)}
+          className="gap-1.5 h-7 text-xs"
+        >
+          <DollarSign className="size-3.5" /> Add Payment
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          data-ocid="project_detail.quick_task_button"
+          onClick={() => taskInputRef.current?.focus()}
+          className="gap-1.5 h-7 text-xs"
+        >
+          <Plus className="size-3.5" /> Add Task
+        </Button>
+      </div>
+
+      {/* Description */}
       {p.description && (
         <Card padding="sm">
           <p className="text-sm text-foreground">{p.description}</p>
@@ -250,9 +321,12 @@ export function ProjectDetail() {
 
       {/* Payment */}
       <Card>
-        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <DollarSign className="size-4 text-primary" /> Payment
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <DollarSign className="size-4 text-primary" /> Payment
+          </h2>
+          <PaymentBadge status={paymentStatus} />
+        </div>
         <div className="grid grid-cols-3 gap-4 mb-4">
           {[
             {
@@ -263,12 +337,12 @@ export function ProjectDetail() {
             {
               label: "Paid",
               value: `$${p.paidAmount.toLocaleString()}`,
-              cls: "text-green-600",
+              cls: "text-emerald-600",
             },
             {
               label: "Remaining",
               value: `$${remaining.toLocaleString()}`,
-              cls: remaining > 0 ? "text-orange-600" : "text-green-600",
+              cls: remaining > 0 ? "text-orange-600" : "text-emerald-600",
             },
           ].map(({ label, value, cls }) => (
             <div key={label}>
@@ -285,20 +359,53 @@ export function ProjectDetail() {
             style={{ width: `${paymentPct}%` }}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {Math.round(paymentPct)}% paid
-        </p>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-xs text-muted-foreground">
+            {Math.round(paymentPct)}% paid
+          </p>
+          <button
+            type="button"
+            data-ocid="project_detail.add_payment_inline_button"
+            onClick={() => setPaymentOpen(true)}
+            className="text-xs text-primary hover:underline font-medium"
+          >
+            + Add Payment
+          </button>
+        </div>
       </Card>
 
       {/* Tasks */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3">
-          Tasks — {doneTasks}/{p.tasks.length} done
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+            Tasks
+            <span className="text-xs font-normal text-muted-foreground normal-case tracking-normal">
+              {doneTasks}/{p.tasks.length} done
+            </span>
+          </h2>
+          <button
+            type="button"
+            data-ocid="project_detail.quick_add_task_button"
+            onClick={() => taskInputRef.current?.focus()}
+            className="text-xs text-primary hover:underline font-medium flex items-center gap-1"
+          >
+            <Plus className="size-3" /> Quick Add
+          </button>
+        </div>
+
+        {/* Task progress bar */}
+        {p.tasks.length > 0 && (
+          <div className="mb-3">
+            <TaskProgressBar tasks={p.tasks} />
+          </div>
+        )}
+
+        {/* Add task input */}
         <div className="flex gap-2 mb-3">
           <Input
+            ref={taskInputRef}
             data-ocid="project_detail.task_input"
-            placeholder="Add a task…"
+            placeholder="Add a task… (press Enter)"
             value={taskName}
             onChange={(e) => setTaskName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTask()}
@@ -311,13 +418,18 @@ export function ProjectDetail() {
             <Plus className="size-4" />
           </Button>
         </div>
+
+        {/* Task list */}
         {p.tasks.length === 0 ? (
-          <p
-            className="text-sm text-muted-foreground"
+          <div
+            className="flex flex-col items-center gap-2 py-8 text-center rounded-xl border border-dashed border-border/60"
             data-ocid="project_detail.tasks.empty_state"
           >
-            No tasks yet. Add one above.
-          </p>
+            <CheckCircle2 className="size-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              No tasks yet. Add your first task above.
+            </p>
+          </div>
         ) : (
           <div className="space-y-1.5">
             {p.tasks.map((task, i) => (
@@ -325,23 +437,29 @@ export function ProjectDetail() {
                 key={task.id}
                 padding="sm"
                 data-ocid={`project_detail.task.item.${i + 1}`}
+                className={`transition-colors ${task.done ? "opacity-75" : ""}`}
               >
                 <div className="flex items-center gap-3">
+                  {/* Custom checkbox button */}
                   <button
                     type="button"
                     data-ocid={`project_detail.task.toggle.${i + 1}`}
                     onClick={() => toggleTask(task.id)}
-                    className="flex-shrink-0 text-primary hover:text-primary/80 transition-colors"
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 ${
+                      task.done
+                        ? "bg-emerald-500 border-emerald-500 text-white"
+                        : "border-border hover:border-emerald-400 bg-background"
+                    }`}
                     aria-label={task.done ? "Mark incomplete" : "Mark complete"}
                   >
-                    {task.done ? (
-                      <CheckSquare className="size-4" />
-                    ) : (
-                      <Square className="size-4 text-muted-foreground" />
-                    )}
+                    {task.done && <Check className="w-3 h-3" />}
                   </button>
                   <span
-                    className={`flex-1 text-sm ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`}
+                    className={`flex-1 text-sm min-w-0 break-words ${
+                      task.done
+                        ? "line-through text-muted-foreground"
+                        : "text-foreground"
+                    }`}
                   >
                     {task.name}
                   </span>
@@ -349,7 +467,7 @@ export function ProjectDetail() {
                     type="button"
                     data-ocid={`project_detail.task.delete_button.${i + 1}`}
                     onClick={() => deleteTask(task.id)}
-                    className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                    className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
                     aria-label="Delete task"
                   >
                     <X className="size-3.5" />
@@ -489,6 +607,59 @@ export function ProjectDetail() {
           </div>
         )}
       </div>
+
+      {/* Quick Payment Dialog */}
+      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <DialogContent
+          className="max-w-sm"
+          data-ocid="project_detail.payment_dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>Add Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Remaining</span>
+              <span className="font-semibold text-foreground">
+                ${remaining.toLocaleString()}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Amount to add ($)</Label>
+              <Input
+                data-ocid="project_detail.payment_amount_input"
+                type="number"
+                min={1}
+                max={remaining}
+                placeholder={`Max $${remaining.toLocaleString()}`}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddPayment()}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              data-ocid="project_detail.payment_cancel_button"
+              onClick={() => {
+                setPaymentOpen(false);
+                setPaymentAmount("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="project_detail.payment_confirm_button"
+              onClick={handleAddPayment}
+              className="gap-1.5"
+            >
+              <DollarSign className="size-3.5" /> Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

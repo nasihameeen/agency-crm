@@ -1,4 +1,6 @@
 export type ProjectStatus = "Pending" | "InProgress" | "Completed";
+export type PaymentStatus = "Paid" | "Partial" | "Unpaid";
+export type DeadlineStatus = "Overdue" | "Upcoming" | "Normal";
 
 export interface Task {
   id: string;
@@ -50,4 +52,57 @@ export interface DashboardStats {
   activeProjects: number;
   completedProjects: number;
   totalEarnings: number;
+  overdueProjects: number;
+  pendingPaymentsTotal: number;
+  tasksCompletedPercent: number;
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions
+// ---------------------------------------------------------------------------
+
+/** Derive payment status from budget and amount paid. */
+export function getPaymentStatus(
+  budget: number,
+  paidAmount: number,
+): PaymentStatus {
+  if (paidAmount <= 0) return "Unpaid";
+  if (paidAmount >= budget) return "Paid";
+  return "Partial";
+}
+
+/**
+ * Derive deadline status.
+ * - Overdue  → deadline is in the past
+ * - Upcoming → deadline is within the next 2 days (≤ 48 h)
+ * - Normal   → everything else (or no deadline set)
+ */
+export function getDeadlineStatus(
+  deadline: string | undefined,
+): DeadlineStatus {
+  if (!deadline) return "Normal";
+
+  const now = Date.now();
+  const deadlineMs = new Date(deadline).getTime();
+  const diffMs = deadlineMs - now;
+
+  if (diffMs < 0) return "Overdue";
+  if (diffMs <= 2 * 24 * 60 * 60 * 1000) return "Upcoming";
+  return "Normal";
+}
+
+/**
+ * Compute task completion stats for a project's task list.
+ * Returns done count, total count, and completion percentage (0–100).
+ */
+export function getTaskProgress(tasks: Task[]): {
+  done: number;
+  total: number;
+  percent: number;
+} {
+  const total = tasks.length;
+  if (total === 0) return { done: 0, total: 0, percent: 0 };
+  const done = tasks.filter((t) => t.done).length;
+  const percent = Math.round((done / total) * 1000) / 10; // 1 decimal
+  return { done, total, percent };
 }

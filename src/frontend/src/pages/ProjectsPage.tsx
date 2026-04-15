@@ -1,6 +1,9 @@
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DeadlineBadge } from "@/components/DeadlineBadge";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { TaskProgressBar } from "@/components/TaskProgressBar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +25,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
 import type { Project, ProjectStatus } from "@/types";
+import {
+  type DeadlineStatus,
+  type PaymentStatus as PaymentStatusType,
+  getDeadlineStatus,
+  getPaymentStatus,
+} from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
@@ -31,6 +40,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -55,25 +65,97 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "Completed", label: "Completed" },
 ];
 
+const STATUS_FILTER_TABS = [
+  "All",
+  "Pending",
+  "InProgress",
+  "Completed",
+] as const;
+const PAYMENT_FILTER_TABS: Array<PaymentStatusType | "All"> = [
+  "All",
+  "Paid",
+  "Partial",
+  "Unpaid",
+];
+const DEADLINE_FILTER_TABS: Array<DeadlineStatus | "All"> = [
+  "All",
+  "Overdue",
+  "Upcoming",
+];
+
+function FilterButton({
+  label,
+  active,
+  onClick,
+  ocid,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  ocid: string;
+}) {
+  return (
+    <button
+      type="button"
+      data-ocid={ocid}
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-card border-border text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function ProjectsPage() {
   const navigate = useNavigate();
   const { clients, projects, saveProject, deleteProject } = useLocalData();
   const { success, error } = useToast();
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "All">(
     "All",
   );
+  const [paymentFilter, setPaymentFilter] = useState<PaymentStatusType | "All">(
+    "All",
+  );
+  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineStatus | "All">(
+    "All",
+  );
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
   const [form, setForm] = useState<ProjectForm>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+
+  const hasActiveFilters =
+    search !== "" ||
+    statusFilter !== "All" ||
+    paymentFilter !== "All" ||
+    deadlineFilter !== "All";
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("All");
+    setPaymentFilter("All");
+    setDeadlineFilter("All");
+  }
 
   const filtered = projects.filter((p) => {
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.description.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "All" || p.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchPayment =
+      paymentFilter === "All" ||
+      getPaymentStatus(p.budget, p.paidAmount) === paymentFilter;
+    const matchDeadline =
+      deadlineFilter === "All" ||
+      getDeadlineStatus(p.deadline) === deadlineFilter;
+    return matchSearch && matchStatus && matchPayment && matchDeadline;
   });
 
   function openAdd() {
@@ -130,6 +212,7 @@ export function ProjectsPage() {
 
   return (
     <div className="p-6 space-y-6" data-ocid="projects.page">
+      {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">
@@ -148,8 +231,10 @@ export function ProjectsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        {/* Search row */}
+        <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             data-ocid="projects.search_input"
@@ -159,40 +244,114 @@ export function ProjectsPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
-          {(["All", "Pending", "InProgress", "Completed"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              data-ocid={`projects.filter.${s.toLowerCase()}`}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}
-            >
-              {s === "InProgress" ? "In Progress" : s}
-            </button>
-          ))}
+
+        {/* Status filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
+            Status
+          </span>
+          <div className="flex gap-2 flex-wrap">
+            {STATUS_FILTER_TABS.map((s) => (
+              <FilterButton
+                key={s}
+                label={s === "InProgress" ? "In Progress" : s}
+                active={statusFilter === s}
+                onClick={() => setStatusFilter(s)}
+                ocid={`projects.status_filter.${s.toLowerCase()}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Payment filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
+            Payment
+          </span>
+          <div className="flex gap-2 flex-wrap">
+            {PAYMENT_FILTER_TABS.map((s) => (
+              <FilterButton
+                key={s}
+                label={s}
+                active={paymentFilter === s}
+                onClick={() => setPaymentFilter(s)}
+                ocid={`projects.payment_filter.${s.toLowerCase()}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Deadline filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
+            Deadline
+          </span>
+          <div className="flex gap-2 flex-wrap">
+            {DEADLINE_FILTER_TABS.map((s) => (
+              <FilterButton
+                key={s}
+                label={s}
+                active={deadlineFilter === s}
+                onClick={() => setDeadlineFilter(s)}
+                ocid={`projects.deadline_filter.${s.toLowerCase()}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <Card className="text-center py-12" data-ocid="projects.empty_state">
+      {/* Results */}
+      {projects.length === 0 ? (
+        <Card className="text-center py-14" data-ocid="projects.empty_state">
           <FolderOpen className="size-10 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground">No projects found</h3>
+          <h3 className="font-semibold text-foreground">No projects yet</h3>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Create your first project to get started.
+            Create your first project to get started tracking work and payments.
           </p>
-          <Button onClick={openAdd} size="sm" className="gap-2">
-            <Plus className="size-4" /> New Project
-          </Button>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={openAdd} size="sm" className="gap-2">
+              <Plus className="size-4" /> New Project
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              data-ocid="projects.goto_clients_link"
+              onClick={() => navigate({ to: "/clients" })}
+            >
+              <Users className="size-4" /> Go to Clients
+            </Button>
+          </div>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="text-center py-14" data-ocid="projects.no_match_state">
+          <Search className="size-10 text-muted-foreground mx-auto mb-3" />
+          <h3 className="font-semibold text-foreground">
+            No projects match your filters
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            Try adjusting your search or filter criteria.
+          </p>
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="projects.clear_filters_button"
+              onClick={clearFilters}
+            >
+              Clear Filters
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((project, i) => {
             const client = clients.find((c) => c.id === project.clientId);
             const remaining = project.budget - project.paidAmount;
-            const isOverdue =
-              project.status !== "Completed" &&
-              new Date(project.deadline) < new Date();
+            const paymentStatus = getPaymentStatus(
+              project.budget,
+              project.paidAmount,
+            );
             return (
               <Card
                 key={project.id}
@@ -201,9 +360,10 @@ export function ProjectsPage() {
                   navigate({ to: "/projects/$id", params: { id: project.id } })
                 }
                 data-ocid={`projects.item.${i + 1}`}
-                className="group"
+                className="group flex flex-col gap-3"
               >
-                <div className="flex items-start justify-between gap-2 mb-3">
+                {/* Card header — name + badges */}
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-semibold text-foreground truncate">
                       {project.name}
@@ -212,43 +372,78 @@ export function ProjectsPage() {
                       {client?.name ?? "Unknown client"}
                     </p>
                   </div>
-                  <StatusBadge status={project.status} size="sm" />
+                  <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+                    <StatusBadge status={project.status} size="sm" />
+                    <PaymentBadge status={paymentStatus} size="sm" />
+                  </div>
                 </div>
+
+                {/* Description */}
                 {project.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     {project.description}
                   </p>
                 )}
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                  <span
-                    className={isOverdue ? "text-orange-600 font-medium" : ""}
-                  >
-                    {isOverdue
-                      ? "⚠ Overdue"
-                      : `Due ${new Date(project.deadline).toLocaleDateString()}`}
-                  </span>
-                  <span>·</span>
-                  <span className="flex items-center gap-0.5">
-                    <DollarSign className="size-3" />
-                    {project.budget.toLocaleString()}
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-1.5 mb-1">
-                  <div
-                    className="bg-accent h-1.5 rounded-full transition-smooth"
-                    style={{
-                      width: `${project.budget > 0 ? Math.min(100, (project.paidAmount / project.budget) * 100) : 0}%`,
-                    }}
+
+                {/* Deadline badge + budget info */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <DeadlineBadge
+                    deadline={project.deadline}
+                    status={project.status}
+                    size="sm"
                   />
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="text-green-600 font-medium">
-                    Paid ${project.paidAmount.toLocaleString()}
+                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                    <DollarSign className="size-3" />
+                    {project.budget.toLocaleString()} budget
                   </span>
-                  <span>Remaining ${remaining.toLocaleString()}</span>
+                  {project.status !== "Completed" && !project.deadline && (
+                    <span className="text-xs text-muted-foreground">
+                      Due{" "}
+                      {new Date(project.deadline ?? "").toLocaleDateString()}
+                    </span>
+                  )}
+                  {project.status !== "Completed" &&
+                    project.deadline &&
+                    getDeadlineStatus(project.deadline) === "Normal" && (
+                      <span className="text-xs text-muted-foreground">
+                        Due {new Date(project.deadline).toLocaleDateString()}
+                      </span>
+                    )}
                 </div>
+
+                {/* Task progress */}
+                {project.tasks.length > 0 && (
+                  <TaskProgressBar tasks={project.tasks} showLabel />
+                )}
+
+                {/* Payment bar */}
+                <div>
+                  <div className="w-full bg-muted rounded-full h-1.5 mb-1">
+                    <div
+                      className="bg-accent h-1.5 rounded-full transition-smooth"
+                      style={{
+                        width: `${
+                          project.budget > 0
+                            ? Math.min(
+                                100,
+                                (project.paidAmount / project.budget) * 100,
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="text-emerald-600 font-medium">
+                      Paid ${project.paidAmount.toLocaleString()}
+                    </span>
+                    <span>Remaining ${remaining.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
                 <div
-                  className="flex items-center gap-1 mt-4 pt-3 border-t border-border"
+                  className="flex items-center gap-1 pt-3 border-t border-border"
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                   role="presentation"

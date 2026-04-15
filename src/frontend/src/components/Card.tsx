@@ -34,7 +34,7 @@ export function Card({
         "bg-card rounded-lg border border-border shadow-card",
         paddingClass,
         hoverable &&
-          "cursor-pointer hover:shadow-elevated hover:-translate-y-0.5 transition-smooth",
+          "cursor-pointer hover:shadow-elevated hover:-translate-y-0.5 transition-all duration-200 ease-out will-change-transform",
         className,
       )}
     >

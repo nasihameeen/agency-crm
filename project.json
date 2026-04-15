@@ -1,24 +1,23 @@
 {
-  "overview": "A clean and modern Client Management App for digital agencies — manage clients, projects, tasks, and payments all in one place with a card-based dashboard UI.",
+  "overview": "A premium Agency CRM app for digital agencies to manage clients, projects, tasks, and payments — all in one clean, fast, and intuitive interface.",
   "features": [
-    "Client management with full CRUD (name, email, phone, business)",
-    "Project tracking with status badges (Pending, In Progress, Completed)",
-    "Task checklists per project with completion toggle",
-    "Payment tracking with auto-calculated remaining amount",
-    "Notes and file/link attachments per project",
-    "Dashboard with real-time metrics: clients, active projects, earnings",
-    "Overdue project highlighting",
-    "Mobile-friendly sidebar navigation"
+    "Client management with analytics (total revenue, active projects, last activity)",
+    "Task management with progress bars and completion tracking",
+    "Smart deadline alerts (Overdue in red, Upcoming in yellow)",
+    "Auto-calculated payment status badges (Paid/Partial/Unpaid)",
+    "Advanced project filters by status, payment, and deadline",
+    "Quick actions: mark complete, add payment, add task in one click",
+    "Upgraded dashboard with overdue count, pending payments, and task stats",
+    "Premium UI with smooth animations, hover effects, and improved empty states"
   ],
-  "category": "productivity",
+  "category": "business-tools",
   "tags": [
     "crm",
     "agency",
-    "client-management",
     "project-management",
-    "tasks",
+    "task-tracking",
     "payments",
     "dashboard"
   ],
-  "last_updated": "2026-04-15T17:25:33.980Z"
+  "last_updated": "2026-04-15T18:02:02.699Z"
 }
