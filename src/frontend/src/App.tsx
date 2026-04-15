@@ -1,9 +1,12 @@
 import { Layout } from "@/components/Layout";
+import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { ClientDetail } from "@/pages/ClientDetail";
 import { ClientsPage } from "@/pages/ClientsPage";
 import { Dashboard } from "@/pages/Dashboard";
+import { FinancePage } from "@/pages/FinancePage";
 import { ProjectDetail } from "@/pages/ProjectDetail";
 import { ProjectsPage } from "@/pages/ProjectsPage";
+import { TasksPage } from "@/pages/TasksPage";
 import {
   RouterProvider,
   createRootRoute,
@@ -46,6 +49,21 @@ const projectDetailRoute = createRoute({
   path: "/projects/$id",
   component: ProjectDetail,
 });
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  component: AnalyticsPage,
+});
+const financeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/finance",
+  component: FinancePage,
+});
+const tasksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/tasks",
+  component: TasksPage,
+});
 
 const routeTree = rootRoute.addChildren([
   dashboardRoute,
@@ -53,6 +71,9 @@ const routeTree = rootRoute.addChildren([
   clientDetailRoute,
   projectsRoute,
   projectDetailRoute,
+  analyticsRoute,
+  financeRoute,
+  tasksRoute,
 ]);
 
 const router = createRouter({ routeTree });

@@ -1,9 +1,10 @@
-import type { Client, Project } from "@/types";
+import type { Client, Expense, FinanceStats, Project } from "@/types";
 import { getDeadlineStatus } from "@/types";
 import { useCallback, useState } from "react";
 
 const CLIENTS_KEY = "agency_crm_clients";
 const PROJECTS_KEY = "agency_crm_projects";
+const EXPENSES_KEY = "agency_crm_expenses";
 
 const SAMPLE_CLIENTS: Client[] = [
   {
@@ -232,12 +233,29 @@ function computeStats(clients: Client[], projects: Project[]) {
   };
 }
 
+/** Compute finance stats from projects (income) and expenses. */
+function computeFinanceStats(
+  projects: Project[],
+  expenses: Expense[],
+): FinanceStats {
+  const totalIncome = projects.reduce((sum, p) => sum + p.paidAmount, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  return {
+    totalIncome,
+    totalExpenses,
+    netProfit: totalIncome - totalExpenses,
+  };
+}
+
 export function useLocalData() {
   const [clients, setClients] = useState<Client[]>(() =>
     loadFromStorage(CLIENTS_KEY, SAMPLE_CLIENTS),
   );
   const [projects, setProjects] = useState<Project[]>(() =>
     loadFromStorage(PROJECTS_KEY, SAMPLE_PROJECTS),
+  );
+  const [expenses, setExpenses] = useState<Expense[]>(() =>
+    loadFromStorage(EXPENSES_KEY, [] as Expense[]),
   );
 
   const saveClient = useCallback((client: Client) => {
@@ -283,15 +301,45 @@ export function useLocalData() {
     });
   }, []);
 
+  const addExpense = useCallback((expense: Expense) => {
+    setExpenses((prev) => {
+      const next = [...prev, expense];
+      saveToStorage(EXPENSES_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const updateExpense = useCallback((expense: Expense) => {
+    setExpenses((prev) => {
+      const next = prev.map((e) => (e.id === expense.id ? expense : e));
+      saveToStorage(EXPENSES_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const deleteExpense = useCallback((expenseId: string) => {
+    setExpenses((prev) => {
+      const next = prev.filter((e) => e.id !== expenseId);
+      saveToStorage(EXPENSES_KEY, next);
+      return next;
+    });
+  }, []);
+
   const stats = computeStats(clients, projects);
+  const financeStats = computeFinanceStats(projects, expenses);
 
   return {
     clients,
     projects,
+    expenses,
     stats,
+    financeStats,
     saveClient,
     deleteClient,
     saveProject,
     deleteProject,
+    addExpense,
+    updateExpense,
+    deleteExpense,
   };
 }

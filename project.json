@@ -1,23 +1,27 @@
 {
-  "overview": "A premium Agency CRM app for digital agencies to manage clients, projects, tasks, and payments — all in one clean, fast, and intuitive interface.",
+  "overview": "A complete Agency Management System extending the existing Agency CRM with Analytics, Finance Tracking, and Advanced Task Management with Calendar view.",
   "features": [
-    "Client management with analytics (total revenue, active projects, last activity)",
-    "Task management with progress bars and completion tracking",
-    "Smart deadline alerts (Overdue in red, Upcoming in yellow)",
-    "Auto-calculated payment status badges (Paid/Partial/Unpaid)",
-    "Advanced project filters by status, payment, and deadline",
-    "Quick actions: mark complete, add payment, add task in one click",
-    "Upgraded dashboard with overdue count, pending payments, and task stats",
-    "Premium UI with smooth animations, hover effects, and improved empty states"
+    "Analytics page with revenue, expense, and profit metrics",
+    "Monthly revenue vs expense bar chart",
+    "Project status distribution pie chart",
+    "Payment insights chart",
+    "Finance page with expense tracker",
+    "Income and expense summary with net profit calculation",
+    "Advanced task management with calendar view",
+    "Calendar indicators with colored dots for task status",
+    "Task filtering by Today, Tomorrow, This Week",
+    "7-day task completion bar chart",
+    "Unified tasks view across all projects"
   ],
   "category": "business-tools",
   "tags": [
     "crm",
     "agency",
-    "project-management",
-    "task-tracking",
-    "payments",
+    "analytics",
+    "finance",
+    "task-management",
+    "calendar",
     "dashboard"
   ],
-  "last_updated": "2026-04-15T18:02:02.699Z"
+  "last_updated": "2026-04-15T18:28:44.391Z"
 }

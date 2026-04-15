@@ -7,6 +7,8 @@ export interface Task {
   name: string;
   done: boolean;
   createdAt: number;
+  date?: string; // ISO date string (optional for backwards compat)
+  priority?: "low" | "medium" | "high"; // optional for backwards compat
 }
 
 export interface Note {
@@ -47,6 +49,15 @@ export interface Client {
   createdAt: number;
 }
 
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  date: string; // ISO date string
+  category: string; // e.g., 'Software', 'Marketing', 'Salaries', 'Office', 'Other'
+  createdAt: number;
+}
+
 export interface DashboardStats {
   totalClients: number;
   activeProjects: number;
@@ -55,6 +66,12 @@ export interface DashboardStats {
   overdueProjects: number;
   pendingPaymentsTotal: number;
   tasksCompletedPercent: number;
+}
+
+export interface FinanceStats {
+  totalIncome: number;
+  totalExpenses: number;
+  netProfit: number;
 }
 
 // ---------------------------------------------------------------------------

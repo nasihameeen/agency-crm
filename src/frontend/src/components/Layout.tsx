@@ -1,7 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
+  BarChart3,
   Briefcase,
+  CheckSquare,
+  DollarSign,
   FolderOpen,
   LayoutDashboard,
   Menu,
@@ -24,6 +27,24 @@ const NAV_ITEMS = [
     label: "Projects",
     icon: FolderOpen,
     ocid: "nav.projects_link",
+  },
+  {
+    to: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    ocid: "nav.analytics_link",
+  },
+  {
+    to: "/finance",
+    label: "Finance",
+    icon: DollarSign,
+    ocid: "nav.finance_link",
+  },
+  {
+    to: "/tasks",
+    label: "Tasks",
+    icon: CheckSquare,
+    ocid: "nav.tasks_link",
   },
 ];
 
