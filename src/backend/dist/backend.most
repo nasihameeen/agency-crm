@@ -1,0 +1,91 @@
+// Version: 1.0.0
+type ClientId__724934594 = Nat;
+type Client__488727031 =
+  {
+    businessName : Text;
+    createdAt : Timestamp__301639476;
+    email : Text;
+    id : ClientId__724934594;
+    name : Text;
+    phone : Text
+  };
+type LinkId__61814416 = Nat;
+type Link__625490308 =
+  {
+    createdAt : Timestamp__301639476;
+    id : LinkId__61814416;
+    parentId : Nat;
+    parentType : ParentType__1066080647;
+    title : Text;
+    url : Text
+  };
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type NoteId__167160349 = Nat;
+type Note__1063160515 =
+  {
+    content : Text;
+    createdAt : Timestamp__301639476;
+    id : NoteId__167160349;
+    parentId : Nat;
+    parentType : ParentType__1066080647
+  };
+type ParentType__1066080647 = {#Client; #Project};
+type ProjectId__478417951 = Nat;
+type ProjectStatus__886440159 = {#Completed; #InProgress; #Pending};
+type Project__614212307 =
+  {
+    budget : Nat;
+    clientId : ClientId__724934594;
+    createdAt : Timestamp__301639476;
+    deadline : Text;
+    description : Text;
+    id : ProjectId__478417951;
+    name : Text;
+    paidAmount : Nat;
+    status : ProjectStatus__886440159
+  };
+type TaskId__207642484 = Nat;
+type Task__431803600 =
+  {
+    createdAt : Timestamp__301639476;
+    id : TaskId__207642484;
+    isDone : Bool;
+    name : Text;
+    projectId : ProjectId__478417951
+  };
+type Timestamp__301639476 = Nat;
+actor {
+  stable clientState :
+    {
+      clients : List__415060402<Client__488727031>;
+      var nextClientId : ClientId__724934594
+    };
+  stable linkState :
+    {
+      links : List__415060402<Link__625490308>;
+      var nextLinkId : LinkId__61814416
+    };
+  stable noteState :
+    {
+      var nextNoteId : NoteId__167160349;
+      notes : List__415060402<Note__1063160515>
+    };
+  stable projectState :
+    {
+      var nextProjectId : ProjectId__478417951;
+      projects : List__415060402<Project__614212307>
+    };
+  stable taskState :
+    {
+      var nextTaskId : TaskId__207642484;
+      tasks : List__415060402<Task__431803600>
+    }
+};

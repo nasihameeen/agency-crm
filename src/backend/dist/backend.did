@@ -1,0 +1,169 @@
+type UpdateTaskArgs = 
+ record {
+   id: TaskId;
+   isDone: bool;
+   name: text;
+ };
+type UpdateProjectArgs = 
+ record {
+   budget: nat;
+   clientId: ClientId;
+   deadline: text;
+   description: text;
+   id: ProjectId;
+   name: text;
+   paidAmount: nat;
+   status: ProjectStatus;
+ };
+type UpdateNoteArgs = 
+ record {
+   content: text;
+   id: NoteId;
+ };
+type UpdateLinkArgs = 
+ record {
+   id: LinkId;
+   title: text;
+   url: text;
+ };
+type UpdateClientArgs = 
+ record {
+   businessName: text;
+   email: text;
+   id: ClientId;
+   name: text;
+   phone: text;
+ };
+type Timestamp = nat;
+type TaskId = nat;
+type Task = 
+ record {
+   createdAt: Timestamp;
+   id: TaskId;
+   isDone: bool;
+   name: text;
+   projectId: ProjectId;
+ };
+type ProjectStatus = 
+ variant {
+   Completed;
+   InProgress;
+   Pending;
+ };
+type ProjectId = nat;
+type Project = 
+ record {
+   budget: nat;
+   clientId: ClientId;
+   createdAt: Timestamp;
+   deadline: text;
+   description: text;
+   id: ProjectId;
+   name: text;
+   paidAmount: nat;
+   status: ProjectStatus;
+ };
+type ParentType = 
+ variant {
+   Client;
+   Project;
+ };
+type NoteId = nat;
+type Note = 
+ record {
+   content: text;
+   createdAt: Timestamp;
+   id: NoteId;
+   parentId: nat;
+   parentType: ParentType;
+ };
+type LinkId = nat;
+type Link = 
+ record {
+   createdAt: Timestamp;
+   id: LinkId;
+   parentId: nat;
+   parentType: ParentType;
+   title: text;
+   url: text;
+ };
+type DashboardStats = 
+ record {
+   activeProjects: nat;
+   completedProjects: nat;
+   totalClients: nat;
+   totalEarnings: nat;
+ };
+type CreateTaskArgs = 
+ record {
+   name: text;
+   projectId: ProjectId;
+ };
+type CreateProjectArgs = 
+ record {
+   budget: nat;
+   clientId: ClientId;
+   deadline: text;
+   description: text;
+   name: text;
+   paidAmount: nat;
+   status: ProjectStatus;
+ };
+type CreateNoteArgs = 
+ record {
+   content: text;
+   parentId: nat;
+   parentType: ParentType;
+ };
+type CreateLinkArgs = 
+ record {
+   parentId: nat;
+   parentType: ParentType;
+   title: text;
+   url: text;
+ };
+type CreateClientArgs = 
+ record {
+   businessName: text;
+   email: text;
+   name: text;
+   phone: text;
+ };
+type ClientId = nat;
+type Client = 
+ record {
+   businessName: text;
+   createdAt: Timestamp;
+   email: text;
+   id: ClientId;
+   name: text;
+   phone: text;
+ };
+service : {
+  createClient: (args: CreateClientArgs) -> (Client);
+  createLink: (args: CreateLinkArgs) -> (Link);
+  createNote: (args: CreateNoteArgs) -> (Note);
+  createProject: (args: CreateProjectArgs) -> (Project);
+  createTask: (args: CreateTaskArgs) -> (Task);
+  deleteClient: (id: ClientId) -> (bool);
+  deleteLink: (id: LinkId) -> (bool);
+  deleteNote: (id: NoteId) -> (bool);
+  deleteProject: (id: ProjectId) -> (bool);
+  deleteTask: (id: TaskId) -> (bool);
+  getAllProjects: () -> (vec Project) query;
+  getClient: (id: ClientId) -> (opt Client) query;
+  getClients: () -> (vec Client) query;
+  getDashboardStats: () -> (DashboardStats) query;
+  getLinksByParent: (parentId: nat, parentType: ParentType) ->
+   (vec Link) query;
+  getNotesByParent: (parentId: nat, parentType: ParentType) ->
+   (vec Note) query;
+  getProject: (id: ProjectId) -> (opt Project) query;
+  getProjectsByClient: (clientId: ClientId) -> (vec Project) query;
+  getTasksByProject: (projectId: ProjectId) -> (vec Task) query;
+  updateClient: (args: UpdateClientArgs) -> (opt Client);
+  updateLink: (args: UpdateLinkArgs) -> (opt Link);
+  updateNote: (args: UpdateNoteArgs) -> (opt Note);
+  updateProject: (args: UpdateProjectArgs) -> (opt Project);
+  updateTask: (args: UpdateTaskArgs) -> (opt Task);
+}
