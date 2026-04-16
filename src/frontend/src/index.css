@@ -355,6 +355,11 @@
       oklch(0.62 0.2 275)
     );
   }
+
+  /* ── Toast / notification slide-up ──────────────── */
+  .animate-slide-up {
+    animation: slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
 }
 
 @layer base {
@@ -424,6 +429,17 @@
   }
   50% {
     box-shadow: 0 0 24px var(--glow-primary);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 

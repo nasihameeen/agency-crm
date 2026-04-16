@@ -1,10 +1,87 @@
-import type { Client, Expense, FinanceStats, Project } from "@/types";
+import type {
+  ActivityEntry,
+  Client,
+  Expense,
+  FinanceStats,
+  Lead,
+  Project,
+} from "@/types";
 import { getDeadlineStatus } from "@/types";
 import { useCallback, useState } from "react";
 
 const CLIENTS_KEY = "agency_crm_clients";
 const PROJECTS_KEY = "agency_crm_projects";
 const EXPENSES_KEY = "agency_crm_expenses";
+const LEADS_KEY = "agency_crm_leads";
+
+const SAMPLE_LEADS: Lead[] = [
+  {
+    id: "lead-1",
+    name: "Samantha Cole",
+    phone: "+1 (555) 871-2234",
+    email: "sam@colecreative.co",
+    companyName: "Cole Creative",
+    source: "Instagram",
+    status: "Interested",
+    notes: "Looking for a full brand package. Budget seems strong.",
+    followUpDate: new Date(Date.now() + 2 * 86400000)
+      .toISOString()
+      .split("T")[0],
+    activityLog: [
+      {
+        id: "al-1",
+        type: "Call",
+        notes: "Intro call — discussed branding needs and timeline.",
+        timestamp: new Date(Date.now() - 3 * 86400000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    archivedAt: null,
+  },
+  {
+    id: "lead-2",
+    name: "Marcus Webb",
+    phone: "+1 (555) 443-9901",
+    email: "marcus@webbuilt.io",
+    companyName: "WebBuilt Agency",
+    source: "Referral",
+    status: "ProposalSent",
+    notes: "Referred by Alex Rivera. Needs e-commerce site overhaul.",
+    followUpDate: new Date(Date.now() - 1 * 86400000)
+      .toISOString()
+      .split("T")[0],
+    activityLog: [
+      {
+        id: "al-2",
+        type: "Meeting",
+        notes: "Discovery meeting. Shared initial scope and timeline.",
+        timestamp: new Date(Date.now() - 7 * 86400000).toISOString(),
+      },
+      {
+        id: "al-3",
+        type: "Message",
+        notes: "Sent proposal PDF via email.",
+        timestamp: new Date(Date.now() - 2 * 86400000).toISOString(),
+      },
+    ],
+    createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+    archivedAt: null,
+  },
+  {
+    id: "lead-3",
+    name: "Lena Park",
+    phone: "+1 (555) 602-1177",
+    email: "lena@parkblooms.com",
+    companyName: "Park Blooms",
+    source: "LinkedIn",
+    status: "New",
+    notes: "Reached out about social media management.",
+    followUpDate: null,
+    activityLog: [],
+    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+    archivedAt: null,
+  },
+];
 
 const SAMPLE_CLIENTS: Client[] = [
   {
@@ -257,6 +334,9 @@ export function useLocalData() {
   const [expenses, setExpenses] = useState<Expense[]>(() =>
     loadFromStorage(EXPENSES_KEY, [] as Expense[]),
   );
+  const [leads, setLeads] = useState<Lead[]>(() =>
+    loadFromStorage(LEADS_KEY, SAMPLE_LEADS),
+  );
 
   const saveClient = useCallback((client: Client) => {
     setClients((prev) => {
@@ -328,10 +408,84 @@ export function useLocalData() {
   const stats = computeStats(clients, projects);
   const financeStats = computeFinanceStats(projects, expenses);
 
+  // ---------------------------------------------------------------------------
+  // Lead operations
+  // ---------------------------------------------------------------------------
+
+  const addLead = useCallback(
+    (lead: Omit<Lead, "id" | "createdAt" | "archivedAt" | "activityLog">) => {
+      setLeads((prev) => {
+        const next: Lead[] = [
+          ...prev,
+          {
+            ...lead,
+            id: crypto.randomUUID(),
+            activityLog: [],
+            createdAt: new Date().toISOString(),
+            archivedAt: null,
+          },
+        ];
+        saveToStorage(LEADS_KEY, next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const updateLead = useCallback((id: string, updates: Partial<Lead>) => {
+    setLeads((prev) => {
+      const next = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
+      saveToStorage(LEADS_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const deleteLead = useCallback((id: string) => {
+    setLeads((prev) => {
+      const next = prev.filter((l) => l.id !== id);
+      saveToStorage(LEADS_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const archiveLead = useCallback((id: string) => {
+    setLeads((prev) => {
+      const next = prev.map((l) =>
+        l.id === id ? { ...l, archivedAt: new Date().toISOString() } : l,
+      );
+      saveToStorage(LEADS_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const addActivityEntry = useCallback(
+    (leadId: string, entry: Omit<ActivityEntry, "id" | "timestamp">) => {
+      setLeads((prev) => {
+        const next = prev.map((l) => {
+          if (l.id !== leadId) return l;
+          const newEntry: ActivityEntry = {
+            ...entry,
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+          };
+          return { ...l, activityLog: [...l.activityLog, newEntry] };
+        });
+        saveToStorage(LEADS_KEY, next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  /** Active leads — archivedAt is null */
+  const activeLeads = leads.filter((l) => l.archivedAt === null);
+
   return {
     clients,
     projects,
     expenses,
+    leads,
+    activeLeads,
     stats,
     financeStats,
     saveClient,
@@ -341,5 +495,10 @@ export function useLocalData() {
     addExpense,
     updateExpense,
     deleteExpense,
+    addLead,
+    updateLead,
+    deleteLead,
+    archiveLead,
+    addActivityEntry,
   };
 }

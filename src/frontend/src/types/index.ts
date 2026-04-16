@@ -2,6 +2,60 @@ export type ProjectStatus = "Pending" | "InProgress" | "Completed";
 export type PaymentStatus = "Paid" | "Partial" | "Unpaid";
 export type DeadlineStatus = "Overdue" | "Upcoming" | "Normal";
 
+// ---------------------------------------------------------------------------
+// Lead Management
+// ---------------------------------------------------------------------------
+
+export type LeadStatus =
+  | "New"
+  | "Contacted"
+  | "Interested"
+  | "ProposalSent"
+  | "Converted"
+  | "Lost";
+
+export type LeadSource =
+  | "Instagram"
+  | "WhatsApp"
+  | "Referral"
+  | "Facebook"
+  | "LinkedIn"
+  | "Website"
+  | "Other";
+
+export interface ActivityEntry {
+  id: string;
+  type: "Call" | "Message" | "Meeting";
+  notes: string;
+  timestamp: string; // ISO string
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  companyName: string;
+  source: LeadSource;
+  status: LeadStatus;
+  notes: string;
+  followUpDate: string | null;
+  activityLog: ActivityEntry[];
+  createdAt: string; // ISO string
+  archivedAt: string | null; // ISO string, null = active
+}
+
+export interface ImportedLead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  companyName: string;
+  quality: "High" | "Medium" | "Low";
+  importStatus: "Pending" | "Approved" | "Rejected";
+  isDuplicate: boolean;
+}
+
 export interface Task {
   id: string;
   name: string;

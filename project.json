@@ -1,26 +1,25 @@
 {
-  "overview": "A premium SaaS-grade Agency Management System for digital agencies. Manage clients, projects, tasks, finances, and analytics in one polished dashboard. Built with a modern design system featuring deep indigo branding, smooth micro-interactions, and a clean card-based layout that looks and feels like a professional product.",
+  "overview": "A premium Agency Management System with a full lead pipeline — Kanban board, CSV/Excel import with verification, duplicate detection, activity logging, and seamless client conversion. Built for digital agencies to manage their entire sales and client workflow from one place.",
   "features": [
-    "Premium design system with deep indigo/purple branding and gradient headers",
-    "7-metric dashboard with overdue alerts and pending payment highlights",
-    "Client management with per-client revenue analytics",
-    "Project management with smart deadline alerts and payment status tracking",
-    "Advanced task calendar with color-coded dots and priority levels",
-    "Finance tracker with income, expense, and net profit cards",
-    "Analytics page with revenue vs expense charts, project status pie, and payment insights",
-    "Smooth micro-interactions: hover lifts, button press animations, card elevations",
-    "Mobile-responsive sidebar with premium navigation"
+    "Lead Kanban board with 6 pipeline stages and drag-and-drop",
+    "Detailed activity log per lead (Call, Message, Meeting with notes)",
+    "CSV and Excel lead import with preview and manual approval",
+    "Duplicate detection with yellow highlight and manual override",
+    "Convert lead to client with automatic pipeline cleanup",
+    "Follow-up date tracking with overdue highlighting",
+    "Bulk approve/reject actions during import",
+    "Full integration with existing Clients, Projects, and Analytics modules"
   ],
-  "category": "business-tools",
+  "category": "crm-sales",
   "tags": [
-    "agency",
     "crm",
-    "project-management",
+    "lead-management",
+    "kanban",
+    "agency",
     "saas",
-    "dashboard",
-    "analytics",
-    "finance",
-    "tasks"
+    "sales-pipeline",
+    "import",
+    "local-storage"
   ],
-  "last_updated": "2026-04-15T18:47:00.151Z"
+  "last_updated": "2026-04-16T03:41:19.496Z"
 }

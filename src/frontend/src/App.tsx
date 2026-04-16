@@ -4,6 +4,7 @@ import { ClientDetail } from "@/pages/ClientDetail";
 import { ClientsPage } from "@/pages/ClientsPage";
 import { Dashboard } from "@/pages/Dashboard";
 import { FinancePage } from "@/pages/FinancePage";
+import LeadsPage from "@/pages/LeadsPage";
 import { ProjectDetail } from "@/pages/ProjectDetail";
 import { ProjectsPage } from "@/pages/ProjectsPage";
 import { TasksPage } from "@/pages/TasksPage";
@@ -64,6 +65,11 @@ const tasksRoute = createRoute({
   path: "/tasks",
   component: TasksPage,
 });
+const leadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leads",
+  component: LeadsPage,
+});
 
 const routeTree = rootRoute.addChildren([
   dashboardRoute,
@@ -74,6 +80,7 @@ const routeTree = rootRoute.addChildren([
   analyticsRoute,
   financeRoute,
   tasksRoute,
+  leadsRoute,
 ]);
 
 const router = createRouter({ routeTree });
