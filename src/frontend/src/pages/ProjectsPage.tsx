@@ -1,6 +1,8 @@
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeadlineBadge } from "@/components/DeadlineBadge";
+import { EmptyState } from "@/components/EmptyState";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TaskProgressBar } from "@/components/TaskProgressBar";
@@ -34,7 +36,6 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
-  DollarSign,
   FolderOpen,
   Pencil,
   Plus,
@@ -83,7 +84,7 @@ const DEADLINE_FILTER_TABS: Array<DeadlineStatus | "All"> = [
   "Upcoming",
 ];
 
-function FilterButton({
+function FilterPill({
   label,
   active,
   onClick,
@@ -99,11 +100,12 @@ function FilterButton({
       type="button"
       data-ocid={ocid}
       onClick={onClick}
-      className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+      className={[
+        "px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-200",
         active
-          ? "bg-primary text-primary-foreground border-primary"
-          : "bg-card border-border text-muted-foreground hover:text-foreground"
-      }`}
+          ? "bg-primary text-primary-foreground border-primary shadow-sm scale-[1.03]"
+          : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/60",
+      ].join(" ")}
     >
       {label}
     </button>
@@ -211,29 +213,37 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6" data-ocid="projects.page">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            Projects
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {projects.length} total
-          </p>
+    <div className="p-6 space-y-6 page-fade-in" data-ocid="projects.page">
+      {/* Gradient Header */}
+      <div className="gradient-header rounded-2xl p-6 text-white shadow-elevated">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-display font-bold tracking-tight">
+              Projects
+            </h1>
+            <p className="text-sm mt-1 opacity-70">
+              {projects.length} total project{projects.length !== 1 ? "s" : ""}
+              {filtered.length !== projects.length && (
+                <span className="ml-1 opacity-60">
+                  · {filtered.length} shown
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            data-ocid="projects.add_button"
+            onClick={openAdd}
+            className="gap-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200"
+            variant="outline"
+          >
+            <Plus className="size-4" /> New Project
+          </Button>
         </div>
-        <Button
-          data-ocid="projects.add_button"
-          onClick={openAdd}
-          className="gap-2"
-        >
-          <Plus className="size-4" /> New Project
-        </Button>
       </div>
 
       {/* Search + Filters */}
-      <div className="space-y-3">
-        {/* Search row */}
+      <Card padding="md" className="space-y-4">
+        {/* Search */}
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -245,77 +255,92 @@ export function ProjectsPage() {
           />
         </div>
 
-        {/* Status filter */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
-            Status
-          </span>
-          <div className="flex gap-2 flex-wrap">
-            {STATUS_FILTER_TABS.map((s) => (
-              <FilterButton
-                key={s}
-                label={s === "InProgress" ? "In Progress" : s}
-                active={statusFilter === s}
-                onClick={() => setStatusFilter(s)}
-                ocid={`projects.status_filter.${s.toLowerCase()}`}
-              />
-            ))}
+        {/* Filter rows */}
+        <div className="space-y-3">
+          {/* Status */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0">
+              Status
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {STATUS_FILTER_TABS.map((s) => (
+                <FilterPill
+                  key={s}
+                  label={s === "InProgress" ? "In Progress" : s}
+                  active={statusFilter === s}
+                  onClick={() => setStatusFilter(s)}
+                  ocid={`projects.status_filter.${s.toLowerCase()}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Payment */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0">
+              Payment
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {PAYMENT_FILTER_TABS.map((s) => (
+                <FilterPill
+                  key={s}
+                  label={s}
+                  active={paymentFilter === s}
+                  onClick={() => setPaymentFilter(s)}
+                  ocid={`projects.payment_filter.${s.toLowerCase()}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0">
+              Due
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {DEADLINE_FILTER_TABS.map((s) => (
+                <FilterPill
+                  key={s}
+                  label={s}
+                  active={deadlineFilter === s}
+                  onClick={() => setDeadlineFilter(s)}
+                  ocid={`projects.deadline_filter.${s.toLowerCase()}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Payment filter */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
-            Payment
-          </span>
-          <div className="flex gap-2 flex-wrap">
-            {PAYMENT_FILTER_TABS.map((s) => (
-              <FilterButton
-                key={s}
-                label={s}
-                active={paymentFilter === s}
-                onClick={() => setPaymentFilter(s)}
-                ocid={`projects.payment_filter.${s.toLowerCase()}`}
-              />
-            ))}
+        {hasActiveFilters && (
+          <div className="pt-1 border-t border-border/50">
+            <button
+              type="button"
+              data-ocid="projects.clear_filters_button"
+              onClick={clearFilters}
+              className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Clear all filters
+            </button>
           </div>
-        </div>
-
-        {/* Deadline filter */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground font-medium w-16 shrink-0">
-            Deadline
-          </span>
-          <div className="flex gap-2 flex-wrap">
-            {DEADLINE_FILTER_TABS.map((s) => (
-              <FilterButton
-                key={s}
-                label={s}
-                active={deadlineFilter === s}
-                onClick={() => setDeadlineFilter(s)}
-                ocid={`projects.deadline_filter.${s.toLowerCase()}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+        )}
+      </Card>
 
       {/* Results */}
       {projects.length === 0 ? (
-        <Card className="text-center py-14" data-ocid="projects.empty_state">
-          <FolderOpen className="size-10 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground">No projects yet</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Create your first project to get started tracking work and payments.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Button onClick={openAdd} size="sm" className="gap-2">
-              <Plus className="size-4" /> New Project
-            </Button>
+        <Card data-ocid="projects.empty_state" className="border-dashed">
+          <EmptyState
+            icon={FolderOpen}
+            title="No projects yet"
+            description="Create your first project to start tracking work, tasks, and payments."
+            ctaLabel="New Project"
+            onCta={openAdd}
+          />
+          <div className="flex justify-center mt-2 pb-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-2 text-muted-foreground"
               data-ocid="projects.goto_clients_link"
               onClick={() => navigate({ to: "/clients" })}
             >
@@ -324,24 +349,14 @@ export function ProjectsPage() {
           </div>
         </Card>
       ) : filtered.length === 0 ? (
-        <Card className="text-center py-14" data-ocid="projects.no_match_state">
-          <Search className="size-10 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground">
-            No projects match your filters
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            Try adjusting your search or filter criteria.
-          </p>
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              data-ocid="projects.clear_filters_button"
-              onClick={clearFilters}
-            >
-              Clear Filters
-            </Button>
-          )}
+        <Card data-ocid="projects.no_match_state" className="border-dashed">
+          <EmptyState
+            icon={Search}
+            title="No projects match these filters"
+            description="Try adjusting your search or clearing filters to see all projects."
+            ctaLabel={hasActiveFilters ? "Clear Filters" : undefined}
+            onCta={hasActiveFilters ? clearFilters : undefined}
+          />
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -352,98 +367,98 @@ export function ProjectsPage() {
               project.budget,
               project.paidAmount,
             );
+            const paidPct =
+              project.budget > 0
+                ? Math.min(100, (project.paidAmount / project.budget) * 100)
+                : 0;
+            const isHighUnpaid =
+              project.budget > 0 && remaining / project.budget > 0.5;
+
             return (
               <Card
                 key={project.id}
                 hoverable
+                variant="premium"
                 onClick={() =>
                   navigate({ to: "/projects/$id", params: { id: project.id } })
                 }
                 data-ocid={`projects.item.${i + 1}`}
-                className="group flex flex-col gap-3"
+                className="group flex flex-col gap-0 !p-0 overflow-hidden"
               >
-                {/* Card header — name + badges */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground truncate">
-                      {project.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {client?.name ?? "Unknown client"}
-                    </p>
+                {/* Card body */}
+                <div className="p-5 flex flex-col gap-3 flex-1">
+                  {/* Name + client */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-display font-bold text-foreground truncate text-base leading-tight">
+                        {project.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {client?.name ?? "Unknown client"}
+                        {client?.businessName
+                          ? ` · ${client.businessName}`
+                          : ""}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+
+                  {/* Badges row */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <StatusBadge status={project.status} size="sm" />
                     <PaymentBadge status={paymentStatus} size="sm" />
-                  </div>
-                </div>
-
-                {/* Description */}
-                {project.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-
-                {/* Deadline badge + budget info */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <DeadlineBadge
-                    deadline={project.deadline}
-                    status={project.status}
-                    size="sm"
-                  />
-                  <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                    <DollarSign className="size-3" />
-                    {project.budget.toLocaleString()} budget
-                  </span>
-                  {project.status !== "Completed" && !project.deadline && (
-                    <span className="text-xs text-muted-foreground">
-                      Due{" "}
-                      {new Date(project.deadline ?? "").toLocaleDateString()}
-                    </span>
-                  )}
-                  {project.status !== "Completed" &&
-                    project.deadline &&
-                    getDeadlineStatus(project.deadline) === "Normal" && (
-                      <span className="text-xs text-muted-foreground">
-                        Due {new Date(project.deadline).toLocaleDateString()}
-                      </span>
-                    )}
-                </div>
-
-                {/* Task progress */}
-                {project.tasks.length > 0 && (
-                  <TaskProgressBar tasks={project.tasks} showLabel />
-                )}
-
-                {/* Payment bar */}
-                <div>
-                  <div className="w-full bg-muted rounded-full h-1.5 mb-1">
-                    <div
-                      className="bg-accent h-1.5 rounded-full transition-smooth"
-                      style={{
-                        width: `${
-                          project.budget > 0
-                            ? Math.min(
-                                100,
-                                (project.paidAmount / project.budget) * 100,
-                              )
-                            : 0
-                        }%`,
-                      }}
+                    <DeadlineBadge
+                      deadline={project.deadline}
+                      status={project.status}
+                      size="sm"
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="text-emerald-600 font-medium">
-                      Paid ${project.paidAmount.toLocaleString()}
-                    </span>
-                    <span>Remaining ${remaining.toLocaleString()}</span>
+
+                  {/* Description */}
+                  {project.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {project.description}
+                    </p>
+                  )}
+
+                  {/* Budget bar — paid vs remaining */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-success font-semibold">
+                        Paid ${project.paidAmount.toLocaleString()}
+                      </span>
+                      <span
+                        className={
+                          isHighUnpaid
+                            ? "text-destructive font-semibold"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        ${remaining.toLocaleString()} left
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${paidPct}%`,
+                          background:
+                            paidPct === 100
+                              ? "oklch(0.52 0.18 142)"
+                              : "linear-gradient(90deg, oklch(0.52 0.18 142), oklch(0.62 0.20 275))",
+                        }}
+                      />
+                    </div>
                   </div>
+
+                  {/* Task progress */}
+                  {project.tasks.length > 0 && (
+                    <TaskProgressBar tasks={project.tasks} showLabel />
+                  )}
                 </div>
 
-                {/* Actions */}
+                {/* Card footer — actions */}
                 <div
-                  className="flex items-center gap-1 pt-3 border-t border-border"
+                  className="flex items-center gap-1 px-4 py-2.5 border-t border-border/60 bg-muted/30"
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                   role="presentation"
@@ -452,7 +467,7 @@ export function ProjectsPage() {
                     data-ocid={`projects.edit_button.${i + 1}`}
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs gap-1"
+                    className="h-7 text-xs gap-1 hover:bg-background"
                     onClick={(e) => {
                       e.stopPropagation();
                       openEdit(project);
@@ -464,7 +479,7 @@ export function ProjectsPage() {
                     data-ocid={`projects.delete_button.${i + 1}`}
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                    className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/5"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget(project);
@@ -472,13 +487,20 @@ export function ProjectsPage() {
                   >
                     <Trash2 className="size-3" /> Delete
                   </Button>
-                  <ChevronRight className="size-4 text-muted-foreground ml-auto group-hover:text-foreground transition-colors" />
+                  <ChevronRight className="size-4 text-muted-foreground ml-auto group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
                 </div>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Floating Action Button */}
+      <FloatingActionButton
+        onClick={openAdd}
+        label="New Project"
+        data-ocid="projects.fab_add_button"
+      />
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

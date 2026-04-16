@@ -11,29 +11,34 @@ const PAYMENT_CONFIG: Record<
 > = {
   Paid: {
     label: "Paid",
-    className: "bg-emerald-100 text-emerald-700 border border-emerald-200",
-    dotClass: "bg-emerald-500",
+    className:
+      "bg-success/10 text-success border border-success/25 hover:bg-success/15",
+    dotClass: "bg-success",
   },
   Partial: {
     label: "Partial",
-    className: "bg-orange-100 text-orange-700 border border-orange-200",
-    dotClass: "bg-orange-500",
+    className:
+      "bg-warning/10 text-warning-foreground border border-warning/25 hover:bg-warning/15",
+    dotClass: "bg-warning",
   },
   Unpaid: {
     label: "Unpaid",
-    className: "bg-red-100 text-red-700 border border-red-200",
-    dotClass: "bg-red-500",
+    className:
+      "bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive/15",
+    dotClass: "bg-destructive",
   },
 };
 
 export function PaymentBadge({ status, size = "md" }: PaymentBadgeProps) {
   const config = PAYMENT_CONFIG[status];
   const sizeClass =
-    size === "sm" ? "text-xs px-2 py-0.5" : "text-xs px-2.5 py-1";
+    size === "sm"
+      ? "text-[11px] px-2 py-0.5 gap-1"
+      : "text-xs px-2.5 py-1 gap-1.5";
 
   return (
     <span
-      className={`badge-hover inline-flex items-center gap-1.5 rounded-full font-medium ${sizeClass} ${config.className}`}
+      className={`badge-hover inline-flex items-center rounded-full font-medium transition-all duration-150 ${sizeClass} ${config.className}`}
     >
       <span
         className={`size-1.5 rounded-full flex-shrink-0 ${config.dotClass}`}

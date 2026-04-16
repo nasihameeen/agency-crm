@@ -32,6 +32,7 @@ import {
   Check,
   CheckCircle2,
   DollarSign,
+  ExternalLink,
   Link2,
   Pencil,
   Plus,
@@ -47,6 +48,21 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "InProgress", label: "In Progress" },
   { value: "Completed", label: "Completed" },
 ];
+
+const PRIORITY_CONFIG = {
+  low: {
+    label: "Low",
+    cls: "bg-muted/80 text-muted-foreground border border-border/70",
+  },
+  medium: {
+    label: "Medium",
+    cls: "bg-warning/10 text-warning-foreground border border-warning/30",
+  },
+  high: {
+    label: "High",
+    cls: "bg-destructive/10 text-destructive border border-destructive/30",
+  },
+};
 
 export function ProjectDetail() {
   const { id } = useParams({ from: "/projects/$id" });
@@ -102,6 +118,7 @@ export function ProjectDetail() {
     p.budget > 0 ? Math.min(100, (p.paidAmount / p.budget) * 100) : 0;
   const paymentStatus = getPaymentStatus(p.budget, p.paidAmount);
   const doneTasks = p.tasks.filter((t) => t.done).length;
+  const isHighUnpaid = p.budget > 0 && remaining / p.budget > 0.5;
 
   function update(patch: Partial<Project>) {
     saveProject({ ...p, ...patch } as Project);
@@ -208,7 +225,7 @@ export function ProjectDetail() {
 
   return (
     <div
-      className="p-6 space-y-6 max-w-3xl mx-auto"
+      className="p-6 space-y-6 max-w-3xl mx-auto page-fade-in"
       data-ocid="project_detail.page"
     >
       {/* Back nav */}
@@ -217,70 +234,111 @@ export function ProjectDetail() {
         size="sm"
         onClick={() => navigate({ to: "/projects" })}
         data-ocid="project_detail.back_link"
-        className="gap-1.5 -ml-1"
+        className="gap-1.5 -ml-1 text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Projects
       </Button>
 
-      {/* Project header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <h1 className="text-2xl font-display font-bold text-foreground leading-tight">
+      {/* Premium Page Header */}
+      <div className="gradient-header rounded-2xl p-6 shadow-elevated">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-display font-bold text-white leading-tight truncate">
               {p.name}
             </h1>
-            <StatusBadge status={p.status} />
-            <DeadlineBadge deadline={p.deadline} status={p.status} />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {client?.name ?? "Unknown client"}
-            {client?.businessName ? ` · ${client.businessName}` : ""}
-          </p>
-          {p.deadline && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Deadline: {new Date(p.deadline).toLocaleDateString()}
+            <p className="text-sm text-white/60 mt-1">
+              {client?.name ?? "Unknown client"}
+              {client?.businessName ? ` · ${client.businessName}` : ""}
+              {p.deadline && (
+                <span className="ml-2">
+                  · Due{" "}
+                  {new Date(p.deadline).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
             </p>
-          )}
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            data-ocid="project_detail.edit_button"
-            onClick={() => {
-              setEditForm({
-                name: p.name,
-                description: p.description,
-                budget: p.budget,
-                paidAmount: p.paidAmount,
-                deadline: p.deadline,
-                status: p.status,
-              });
-              setEditOpen(true);
-            }}
-            className="gap-1.5"
-          >
-            <Pencil className="size-3.5" /> Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            data-ocid="project_detail.delete_button"
-            onClick={() => setDeleteOpen(true)}
-            className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
-          >
-            <Trash2 className="size-3.5" /> Delete
-          </Button>
+
+            {/* Badges */}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <StatusBadge status={p.status} />
+              <DeadlineBadge deadline={p.deadline} status={p.status} />
+              <PaymentBadge status={paymentStatus} />
+            </div>
+
+            {/* Budget stats row */}
+            <div className="grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-white/15">
+              {[
+                {
+                  label: "Total Budget",
+                  value: `$${p.budget.toLocaleString()}`,
+                  cls: "text-white",
+                },
+                {
+                  label: "Paid",
+                  value: `$${p.paidAmount.toLocaleString()}`,
+                  cls: "text-emerald-300",
+                },
+                {
+                  label: "Remaining",
+                  value: `$${remaining.toLocaleString()}`,
+                  cls: isHighUnpaid ? "text-red-300" : "text-white/80",
+                },
+              ].map(({ label, value, cls }) => (
+                <div key={label}>
+                  <p className="text-[11px] font-medium text-white/50 uppercase tracking-wider">
+                    {label}
+                  </p>
+                  <p className={`text-xl font-display font-bold mt-0.5 ${cls}`}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="project_detail.edit_button"
+              onClick={() => {
+                setEditForm({
+                  name: p.name,
+                  description: p.description,
+                  budget: p.budget,
+                  paidAmount: p.paidAmount,
+                  deadline: p.deadline,
+                  status: p.status,
+                });
+                setEditOpen(true);
+              }}
+              className="gap-1.5 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="project_detail.delete_button"
+              onClick={() => setDeleteOpen(true)}
+              className="gap-1.5 bg-red-500/10 border-red-400/30 text-red-300 hover:bg-red-500/20 hover:text-red-200"
+            >
+              <Trash2 className="size-3.5" /> Delete
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Quick Actions Bar */}
       <div
-        className="flex flex-wrap gap-2 p-3 rounded-xl bg-muted/40 border border-border/50"
+        className="flex flex-wrap gap-2 p-3.5 rounded-xl bg-muted/40 border border-border/50"
         data-ocid="project_detail.quick_actions"
       >
-        <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mr-1">
-          <Zap className="size-3.5" /> Quick Actions
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mr-1">
+          <Zap className="size-3.5 text-accent" /> Quick Actions
         </span>
         {p.status !== "Completed" && (
           <Button
@@ -315,51 +373,33 @@ export function ProjectDetail() {
       {/* Description */}
       {p.description && (
         <Card padding="sm">
-          <p className="text-sm text-foreground">{p.description}</p>
+          <p className="text-sm text-foreground leading-relaxed">
+            {p.description}
+          </p>
         </Card>
       )}
 
-      {/* Payment */}
+      {/* Payment progress card */}
       <Card>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <DollarSign className="size-4 text-primary" /> Payment
+            <DollarSign className="size-4 text-accent" /> Payment
           </h2>
           <PaymentBadge status={paymentStatus} />
         </div>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          {[
-            {
-              label: "Total Budget",
-              value: `$${p.budget.toLocaleString()}`,
-              cls: "text-foreground",
-            },
-            {
-              label: "Paid",
-              value: `$${p.paidAmount.toLocaleString()}`,
-              cls: "text-emerald-600",
-            },
-            {
-              label: "Remaining",
-              value: `$${remaining.toLocaleString()}`,
-              cls: remaining > 0 ? "text-orange-600" : "text-emerald-600",
-            },
-          ].map(({ label, value, cls }) => (
-            <div key={label}>
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className={`text-lg font-bold font-display ${cls} mt-0.5`}>
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="w-full bg-muted rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden mb-2">
           <div
-            className="bg-accent h-2 rounded-full transition-smooth"
-            style={{ width: `${paymentPct}%` }}
+            className="h-full rounded-full transition-all duration-700 ease-out"
+            style={{
+              width: `${paymentPct}%`,
+              background:
+                paymentPct === 100
+                  ? "oklch(0.52 0.18 142)"
+                  : "linear-gradient(90deg, oklch(0.52 0.18 142), oklch(0.62 0.20 275))",
+            }}
           />
         </div>
-        <div className="flex items-center justify-between mt-1.5">
+        <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {Math.round(paymentPct)}% paid
           </p>
@@ -367,7 +407,7 @@ export function ProjectDetail() {
             type="button"
             data-ocid="project_detail.add_payment_inline_button"
             onClick={() => setPaymentOpen(true)}
-            className="text-xs text-primary hover:underline font-medium"
+            className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
           >
             + Add Payment
           </button>
@@ -377,9 +417,9 @@ export function ProjectDetail() {
       {/* Tasks */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
+          <h2 className="text-sm font-display font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
             Tasks
-            <span className="text-xs font-normal text-muted-foreground normal-case tracking-normal">
+            <span className="text-xs font-normal text-muted-foreground normal-case tracking-normal bg-muted px-2 py-0.5 rounded-full">
               {doneTasks}/{p.tasks.length} done
             </span>
           </h2>
@@ -387,7 +427,7 @@ export function ProjectDetail() {
             type="button"
             data-ocid="project_detail.quick_add_task_button"
             onClick={() => taskInputRef.current?.focus()}
-            className="text-xs text-primary hover:underline font-medium flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
           >
             <Plus className="size-3" /> Quick Add
           </button>
@@ -431,58 +471,78 @@ export function ProjectDetail() {
             </p>
           </div>
         ) : (
-          <div className="space-y-1.5">
-            {p.tasks.map((task, i) => (
-              <Card
-                key={task.id}
-                padding="sm"
-                data-ocid={`project_detail.task.item.${i + 1}`}
-                className={`transition-colors ${task.done ? "opacity-75" : ""}`}
-              >
-                <div className="flex items-center gap-3">
-                  {/* Custom checkbox button */}
+          <div className="space-y-2">
+            {p.tasks.map((task, i) => {
+              const priority = task.priority;
+              const priorityCfg = priority ? PRIORITY_CONFIG[priority] : null;
+              return (
+                <div
+                  key={task.id}
+                  data-ocid={`project_detail.task.item.${i + 1}`}
+                  className={[
+                    "flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200",
+                    task.done
+                      ? "bg-muted/30 border-border/40 opacity-70"
+                      : "bg-card border-border hover:border-border/80 hover:shadow-card",
+                  ].join(" ")}
+                >
+                  {/* Custom checkbox */}
                   <button
                     type="button"
                     data-ocid={`project_detail.task.toggle.${i + 1}`}
                     onClick={() => toggleTask(task.id)}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all duration-150 ${
+                    className={[
+                      "w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0",
+                      "transition-all duration-200",
                       task.done
-                        ? "bg-emerald-500 border-emerald-500 text-white"
-                        : "border-border hover:border-emerald-400 bg-background"
-                    }`}
+                        ? "bg-emerald-500 border-emerald-500 text-white shadow-glow-success"
+                        : "border-border hover:border-accent bg-background",
+                    ].join(" ")}
                     aria-label={task.done ? "Mark incomplete" : "Mark complete"}
                   >
                     {task.done && <Check className="w-3 h-3" />}
                   </button>
+
                   <span
-                    className={`flex-1 text-sm min-w-0 break-words ${
+                    className={[
+                      "flex-1 text-sm min-w-0 break-words leading-snug",
                       task.done
                         ? "line-through text-muted-foreground"
-                        : "text-foreground"
-                    }`}
+                        : "text-foreground font-medium",
+                    ].join(" ")}
                   >
                     {task.name}
                   </span>
+
+                  {/* Priority badge */}
+                  {priorityCfg && (
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${priorityCfg.cls}`}
+                    >
+                      {priorityCfg.label}
+                    </span>
+                  )}
+
                   <button
                     type="button"
                     data-ocid={`project_detail.task.delete_button.${i + 1}`}
                     onClick={() => deleteTask(task.id)}
-                    className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors flex-shrink-0"
                     aria-label="Delete task"
                   >
                     <X className="size-3.5" />
                   </button>
                 </div>
-              </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Notes */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-          <StickyNote className="size-3.5" /> Notes
+        <h2 className="text-sm font-display font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          <StickyNote className="size-3.5 text-accent" /> Notes
         </h2>
         <div className="flex gap-2 mb-3">
           <Textarea
@@ -503,7 +563,7 @@ export function ProjectDetail() {
         </div>
         {p.notes.length === 0 ? (
           <p
-            className="text-sm text-muted-foreground"
+            className="text-sm text-muted-foreground italic"
             data-ocid="project_detail.notes.empty_state"
           >
             No notes yet.
@@ -511,29 +571,37 @@ export function ProjectDetail() {
         ) : (
           <div className="space-y-2">
             {[...p.notes].reverse().map((note, i) => (
-              <Card
+              <div
                 key={note.id}
-                padding="sm"
                 data-ocid={`project_detail.note.item.${i + 1}`}
+                className="group flex items-start gap-3 pl-4 pr-3 py-3 rounded-xl border border-border bg-card hover:border-accent/30 transition-all duration-200"
+                style={{
+                  borderLeftWidth: "3px",
+                  borderLeftColor: "oklch(0.62 0.20 275)",
+                }}
               >
-                <div className="flex items-start gap-2">
-                  <p className="text-sm text-foreground flex-1 break-words">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground leading-relaxed break-words">
                     {note.content}
                   </p>
-                  <button
-                    type="button"
-                    data-ocid={`project_detail.note.delete_button.${i + 1}`}
-                    onClick={() => deleteNote(note.id)}
-                    className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label="Delete note"
-                  >
-                    <X className="size-3.5" />
-                  </button>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {new Date(note.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(note.createdAt).toLocaleDateString()}
-                </p>
-              </Card>
+                <button
+                  type="button"
+                  data-ocid={`project_detail.note.delete_button.${i + 1}`}
+                  onClick={() => deleteNote(note.id)}
+                  className="size-6 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all duration-200 flex-shrink-0 mt-0.5"
+                  aria-label="Delete note"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -541,8 +609,8 @@ export function ProjectDetail() {
 
       {/* File Links */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Link2 className="size-3.5" /> File Links
+        <h2 className="text-sm font-display font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Link2 className="size-3.5 text-accent" /> File Links
         </h2>
         <div className="flex gap-2 mb-3 flex-wrap">
           <Input
@@ -569,7 +637,7 @@ export function ProjectDetail() {
         </div>
         {p.links.length === 0 ? (
           <p
-            className="text-sm text-muted-foreground"
+            className="text-sm text-muted-foreground italic"
             data-ocid="project_detail.links.empty_state"
           >
             No links yet.
@@ -577,32 +645,31 @@ export function ProjectDetail() {
         ) : (
           <div className="space-y-2">
             {p.links.map((link, i) => (
-              <Card
+              <div
                 key={link.id}
-                padding="sm"
                 data-ocid={`project_detail.link.item.${i + 1}`}
+                className="group flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:border-accent/30 hover:bg-accent/5 transition-all duration-200"
               >
-                <div className="flex items-center gap-2">
-                  <Link2 className="size-4 text-primary flex-shrink-0" />
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline flex-1 truncate"
-                  >
-                    {link.label}
-                  </a>
-                  <button
-                    type="button"
-                    data-ocid={`project_detail.link.delete_button.${i + 1}`}
-                    onClick={() => deleteLink(link.id)}
-                    className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label="Delete link"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              </Card>
+                <ExternalLink className="size-4 text-accent flex-shrink-0" />
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:text-primary/80 hover:underline flex-1 truncate font-medium transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {link.label}
+                </a>
+                <button
+                  type="button"
+                  data-ocid={`project_detail.link.delete_button.${i + 1}`}
+                  onClick={() => deleteLink(link.id)}
+                  className="size-6 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all duration-200 flex-shrink-0"
+                  aria-label="Delete link"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         )}

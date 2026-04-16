@@ -19,24 +19,28 @@ export function DeadlineBadge({
   if (deadlineStatus === "Normal") return null;
 
   const sizeClass =
-    size === "sm" ? "text-xs px-2 py-0.5" : "text-xs px-2.5 py-1";
+    size === "sm"
+      ? "text-[11px] px-2 py-0.5 gap-1"
+      : "text-xs px-2.5 py-1 gap-1.5";
 
   const config =
     deadlineStatus === "Overdue"
       ? {
           label: "Overdue",
-          className: "bg-red-100 text-red-700 border border-red-200",
-          dotClass: "bg-red-500",
+          className:
+            "bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive/15",
+          dotClass: "bg-destructive",
         }
       : {
           label: "Due Soon",
-          className: "bg-amber-100 text-amber-700 border border-amber-200",
-          dotClass: "bg-amber-500",
+          className:
+            "bg-warning/10 text-warning-foreground border border-warning/25 hover:bg-warning/15",
+          dotClass: "bg-warning",
         };
 
   return (
     <span
-      className={`badge-hover inline-flex items-center gap-1.5 rounded-full font-medium ${sizeClass} ${config.className}`}
+      className={`badge-hover inline-flex items-center rounded-full font-medium transition-all duration-150 ${sizeClass} ${config.className}`}
     >
       <span
         className={`size-1.5 rounded-full flex-shrink-0 ${config.dotClass}`}

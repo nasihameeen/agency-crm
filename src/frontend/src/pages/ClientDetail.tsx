@@ -1,6 +1,7 @@
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DeadlineBadge } from "@/components/DeadlineBadge";
+import { EmptyState } from "@/components/EmptyState";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TaskProgressBar } from "@/components/TaskProgressBar";
@@ -25,16 +26,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
 import type { Client, Project, ProjectStatus } from "@/types";
-import { getPaymentStatus } from "@/types";
+import { getPaymentStatus, getTaskProgress } from "@/types";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BarChart3,
+  Building2,
   CalendarDays,
+  ChevronRight,
   DollarSign,
   FolderOpen,
   Layers,
+  Mail,
   Pencil,
+  Phone,
   Plus,
   StickyNote,
   Trash2,
@@ -68,6 +73,46 @@ function formatRelativeDate(ts: number): string {
 
 function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString("en-US")}`;
+}
+
+/** Stat card for the analytics section */
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  colorClass,
+  bgClass,
+  ocid,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  colorClass: string;
+  bgClass: string;
+  ocid: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border ${bgClass} p-4 flex flex-col gap-2 transition-smooth hover:-translate-y-0.5 hover:shadow-elevated`}
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className={`size-7 rounded-lg ${colorClass} flex items-center justify-center`}
+        >
+          <Icon className="size-3.5 text-white" />
+        </div>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {label}
+        </span>
+      </div>
+      <p
+        className="text-2xl font-bold text-foreground font-display"
+        data-ocid={ocid}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 export function ClientDetail() {
@@ -193,80 +238,96 @@ export function ClientDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6" data-ocid="client_detail.page">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: "/clients" })}
-          data-ocid="client_detail.back_link"
-          className="gap-1.5"
-        >
-          <ArrowLeft className="size-4" /> Clients
-        </Button>
-      </div>
+    <div className="p-6 space-y-6 page-fade-in" data-ocid="client_detail.page">
+      {/* Breadcrumb */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate({ to: "/clients" })}
+        data-ocid="client_detail.back_link"
+        className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" /> Back to Clients
+      </Button>
 
-      {/* Client Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-bold text-primary">
-              {client.name.charAt(0).toUpperCase()}
-            </span>
+      {/* Premium Client Header */}
+      <div className="rounded-2xl gradient-header p-6 shadow-premium relative overflow-hidden">
+        {/* Decorative radial glow */}
+        <div
+          className="absolute -top-8 -right-8 size-48 rounded-full opacity-20 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle, oklch(0.62 0.20 275), transparent 70%)",
+          }}
+        />
+
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            {/* Large avatar */}
+            <div className="size-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-elevated flex-shrink-0">
+              <span className="text-2xl font-bold text-white select-none">
+                {client.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-display font-bold text-white leading-tight">
+                {client.name}
+              </h1>
+              {client.businessName && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Building2 className="size-3.5 text-white/60" />
+                  <p className="text-sm text-white/70">{client.businessName}</p>
+                </div>
+              )}
+              {/* Contact info pills */}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {client.email && (
+                  <span className="flex items-center gap-1 text-xs text-white/60 bg-white/10 rounded-full px-2.5 py-1">
+                    <Mail className="size-3" />
+                    {client.email}
+                  </span>
+                )}
+                {client.phone && (
+                  <span className="flex items-center gap-1 text-xs text-white/60 bg-white/10 rounded-full px-2.5 py-1">
+                    <Phone className="size-3" />
+                    {client.phone}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">
-              {client.name}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {client.businessName}
-            </p>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="client_detail.edit_button"
+              onClick={() => {
+                setForm({
+                  name: client.name,
+                  phone: client.phone,
+                  email: client.email,
+                  businessName: client.businessName,
+                });
+                setEditOpen(true);
+              }}
+              className="gap-1.5 bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              data-ocid="client_detail.delete_button"
+              onClick={() => setDeleteOpen(true)}
+              className="gap-1.5 bg-white/5 border-red-400/30 text-red-300 hover:bg-red-500/15"
+            >
+              <Trash2 className="size-3.5" /> Delete
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            data-ocid="client_detail.edit_button"
-            onClick={() => {
-              setForm({
-                name: client.name,
-                phone: client.phone,
-                email: client.email,
-                businessName: client.businessName,
-              });
-              setEditOpen(true);
-            }}
-            className="gap-1.5"
-          >
-            <Pencil className="size-3.5" /> Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            data-ocid="client_detail.delete_button"
-            onClick={() => setDeleteOpen(true)}
-            className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
-          >
-            <Trash2 className="size-3.5" /> Delete
-          </Button>
-        </div>
-      </div>
-
-      {/* Contact Info */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Card padding="sm">
-          <p className="text-xs text-muted-foreground">Email</p>
-          <p className="text-sm font-medium text-foreground mt-0.5 break-words">
-            {client.email || "—"}
-          </p>
-        </Card>
-        <Card padding="sm">
-          <p className="text-xs text-muted-foreground">Phone</p>
-          <p className="text-sm font-medium text-foreground mt-0.5">
-            {client.phone || "—"}
-          </p>
-        </Card>
       </div>
 
       {/* Analytics Cards */}
@@ -274,71 +335,45 @@ export function ClientDetail() {
         className="grid grid-cols-2 sm:grid-cols-4 gap-3"
         data-ocid="client_detail.analytics.section"
       >
-        <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <Layers className="size-3.5 text-sky-500" />
-            <span className="text-xs font-medium text-sky-600 uppercase tracking-wide">
-              Total Projects
-            </span>
-          </div>
-          <p
-            className="text-2xl font-bold text-sky-700"
-            data-ocid="client_detail.analytics.total_projects"
-          >
-            {clientProjects.length}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <DollarSign className="size-3.5 text-emerald-500" />
-            <span className="text-xs font-medium text-emerald-600 uppercase tracking-wide">
-              Total Revenue
-            </span>
-          </div>
-          <p
-            className="text-2xl font-bold text-emerald-700"
-            data-ocid="client_detail.analytics.total_revenue"
-          >
-            {formatCurrency(totalRevenue)}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <BarChart3 className="size-3.5 text-orange-500" />
-            <span className="text-xs font-medium text-orange-600 uppercase tracking-wide">
-              Active
-            </span>
-          </div>
-          <p
-            className="text-2xl font-bold text-orange-700"
-            data-ocid="client_detail.analytics.active_projects"
-          >
-            {activeProjects}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-purple-100 bg-purple-50 p-3 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <CalendarDays className="size-3.5 text-purple-500" />
-            <span className="text-xs font-medium text-purple-600 uppercase tracking-wide">
-              Last Activity
-            </span>
-          </div>
-          <p
-            className="text-sm font-bold text-purple-700 leading-tight mt-auto"
-            data-ocid="client_detail.analytics.last_activity"
-          >
-            {lastActivityTs ? formatRelativeDate(lastActivityTs) : "—"}
-          </p>
-        </div>
+        <StatCard
+          icon={Layers}
+          label="Total Projects"
+          value={String(clientProjects.length)}
+          colorClass="bg-sky-500"
+          bgClass="border-sky-100 bg-sky-50"
+          ocid="client_detail.analytics.total_projects"
+        />
+        <StatCard
+          icon={DollarSign}
+          label="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          colorClass="bg-emerald-500"
+          bgClass="border-emerald-100 bg-emerald-50"
+          ocid="client_detail.analytics.total_revenue"
+        />
+        <StatCard
+          icon={BarChart3}
+          label="Active"
+          value={String(activeProjects)}
+          colorClass="bg-orange-500"
+          bgClass="border-orange-100 bg-orange-50"
+          ocid="client_detail.analytics.active_projects"
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Last Activity"
+          value={lastActivityTs ? formatRelativeDate(lastActivityTs) : "—"}
+          colorClass="bg-purple-500"
+          bgClass="border-purple-100 bg-purple-50"
+          ocid="client_detail.analytics.last_activity"
+        />
       </div>
 
-      {/* Projects */}
+      {/* Projects Section */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <FolderOpen className="size-3.5" />
             Projects ({clientProjects.length})
           </h2>
           <Button
@@ -351,72 +386,94 @@ export function ClientDetail() {
             <Plus className="size-3" /> Add
           </Button>
         </div>
+
         {clientProjects.length === 0 ? (
-          <Card
-            className="text-center py-10"
-            data-ocid="client_detail.projects.empty_state"
-          >
-            <FolderOpen className="size-9 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground mb-1">
-              No projects yet
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Add the first project for {client.name} to get started.
-            </p>
-            <Button
+          <Card data-ocid="client_detail.projects.empty_state">
+            <EmptyState
+              icon={FolderOpen}
+              title="No projects for this client"
+              description={`Add the first project for ${client.name} to start tracking progress.`}
+              ctaLabel="Add Project"
+              onCta={() => setAddProjectOpen(true)}
               size="sm"
-              data-ocid="client_detail.projects.empty_state.add_button"
-              onClick={() => setAddProjectOpen(true)}
-              className="gap-1.5"
-            >
-              <Plus className="size-3.5" /> Add First Project
-            </Button>
+            />
           </Card>
         ) : (
           <div className="space-y-2">
-            {clientProjects.map((project, i) => (
-              <Card
-                key={project.id}
-                hoverable
-                padding="sm"
-                onClick={() =>
-                  navigate({ to: "/projects/$id", params: { id: project.id } })
-                }
-                data-ocid={`client_detail.project.item.${i + 1}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate mb-1">
-                      {project.name}
-                    </p>
-                    <div className="flex items-center flex-wrap gap-1.5 mb-2">
-                      <StatusBadge status={project.status} size="sm" />
-                      <PaymentBadge
-                        status={getPaymentStatus(
-                          project.budget,
-                          project.paidAmount,
-                        )}
-                      />
-                      <DeadlineBadge
-                        deadline={project.deadline}
-                        status={project.status}
-                      />
+            {clientProjects.map((project, i) => {
+              const { done, total, percent } = getTaskProgress(
+                project.tasks ?? [],
+              );
+              return (
+                <Card
+                  key={project.id}
+                  hoverable
+                  padding="sm"
+                  onClick={() =>
+                    navigate({
+                      to: "/projects/$id",
+                      params: { id: project.id },
+                    })
+                  }
+                  data-ocid={`client_detail.project.item.${i + 1}`}
+                  className="group animate-item-in"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left: name + badges */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {project.name}
+                        </p>
+                      </div>
+                      <div className="flex items-center flex-wrap gap-1.5 mb-2">
+                        <StatusBadge status={project.status} size="sm" />
+                        <PaymentBadge
+                          status={getPaymentStatus(
+                            project.budget,
+                            project.paidAmount,
+                          )}
+                        />
+                        <DeadlineBadge
+                          deadline={project.deadline}
+                          status={project.status}
+                        />
+                      </div>
+                      {/* Task progress bar */}
+                      {total > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full progress-gradient animate-progress"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {done}/{total} tasks
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {project.tasks && project.tasks.length > 0 && (
-                      <TaskProgressBar
-                        tasks={project.tasks}
-                        showLabel={false}
-                      />
-                    )}
+
+                    {/* Right: budget + chevron */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-sm font-semibold text-foreground">
+                          {formatCurrency(project.budget)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">budget</p>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Notes */}
+      {/* Notes Section */}
       <div>
         <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
           <StickyNote className="size-3.5" /> Notes
@@ -438,6 +495,7 @@ export function ClientDetail() {
             <Plus className="size-4" />
           </Button>
         </div>
+
         {client.notes.length === 0 ? (
           <p
             className="text-sm text-muted-foreground"
@@ -598,7 +656,7 @@ export function ClientDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
+      {/* Edit Client Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent data-ocid="client_detail.edit_dialog">
           <DialogHeader>

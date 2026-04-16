@@ -7,39 +7,41 @@ interface StatusBadgeProps {
 
 const STATUS_CONFIG: Record<
   ProjectStatus,
-  { label: string; className: string }
+  { label: string; className: string; dotClass: string }
 > = {
   Pending: {
     label: "Pending",
-    className: "bg-muted text-muted-foreground border border-border",
+    className:
+      "bg-muted/80 text-muted-foreground border border-border/80 hover:bg-muted",
+    dotClass: "bg-muted-foreground",
   },
   InProgress: {
     label: "In Progress",
-    className: "bg-orange-100 text-orange-700 border border-orange-200",
+    className:
+      "bg-warning/10 text-warning-foreground border border-warning/25 hover:bg-warning/15",
+    dotClass: "bg-warning",
   },
   Completed: {
     label: "Completed",
-    className: "bg-green-100 text-green-700 border border-green-200",
+    className:
+      "bg-success/10 text-success border border-success/25 hover:bg-success/15",
+    dotClass: "bg-success",
   },
 };
 
 export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
   const config = STATUS_CONFIG[status];
   const sizeClass =
-    size === "sm" ? "text-xs px-2 py-0.5" : "text-xs px-2.5 py-1";
+    size === "sm"
+      ? "text-[11px] px-2 py-0.5 gap-1"
+      : "text-xs px-2.5 py-1 gap-1.5";
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium ${sizeClass} ${config.className}`}
+      className={`badge-hover inline-flex items-center rounded-full font-medium transition-all duration-150 ${sizeClass} ${config.className}`}
     >
       <span
-        className={`size-1.5 rounded-full flex-shrink-0 ${
-          status === "Pending"
-            ? "bg-muted-foreground"
-            : status === "InProgress"
-              ? "bg-orange-500"
-              : "bg-green-600"
-        }`}
+        className={`size-1.5 rounded-full flex-shrink-0 ${config.dotClass}`}
       />
       {config.label}
     </span>
