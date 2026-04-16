@@ -1,6 +1,7 @@
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { useLocalData } from "@/hooks/useLocalData";
+import { formatCurrency } from "@/types";
 import type { Expense } from "@/types";
 import {
   endOfMonth,
@@ -75,8 +76,9 @@ function CategoryBadge({ category }: { category: string }) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+// Display finance amounts in INR (default; expenses have no per-record currency)
 function fmt(n: number) {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return formatCurrency(n, "INR");
 }
 
 function todayISO() {
@@ -433,7 +435,7 @@ export function FinancePage() {
                     tick={{ fontSize: 12, fill: "oklch(0.52 0.012 245)" }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}k`}
                     width={44}
                   />
                   <Tooltip content={<ChartTooltip />} />
@@ -505,7 +507,7 @@ export function FinancePage() {
                     htmlFor="expense-amount"
                     className="block text-xs font-semibold text-foreground mb-1.5"
                   >
-                    Amount ($)
+                    Amount (₹ INR)
                   </label>
                   <input
                     id="expense-amount"

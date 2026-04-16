@@ -6,7 +6,7 @@ import { PaymentBadge } from "@/components/PaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TaskProgressBar } from "@/components/TaskProgressBar";
 import { useLocalData } from "@/hooks/useLocalData";
-import { getDeadlineStatus, getPaymentStatus } from "@/types";
+import { formatCurrency, getDeadlineStatus, getPaymentStatus } from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -177,6 +177,38 @@ export function Dashboard() {
   const { clients, projects, stats } = useLocalData();
   const [fabOpen, setFabOpen] = useState(false);
 
+  // Split earnings by currency for display
+  const inrEarnings = projects.reduce(
+    (s, p) => (p.paidCurrency === "USD" ? s : s + p.paidAmount),
+    0,
+  );
+  const usdEarnings = projects.reduce(
+    (s, p) => (p.paidCurrency === "USD" ? s + p.paidAmount : s),
+    0,
+  );
+  const earningsDisplay =
+    usdEarnings > 0 && inrEarnings > 0
+      ? `${formatCurrency(inrEarnings, "INR")} + ${formatCurrency(usdEarnings, "USD")}`
+      : usdEarnings > 0
+        ? formatCurrency(usdEarnings, "USD")
+        : formatCurrency(inrEarnings, "INR");
+
+  // Split pending payments by currency
+  const inrPending = projects.reduce((s, p) => {
+    const rem = p.budget - p.paidAmount;
+    return p.budgetCurrency === "USD" || rem <= 0 ? s : s + rem;
+  }, 0);
+  const usdPending = projects.reduce((s, p) => {
+    const rem = p.budget - p.paidAmount;
+    return p.budgetCurrency === "USD" && rem > 0 ? s + rem : s;
+  }, 0);
+  const pendingDisplay =
+    usdPending > 0 && inrPending > 0
+      ? `${formatCurrency(inrPending, "INR")} + ${formatCurrency(usdPending, "USD")}`
+      : usdPending > 0
+        ? formatCurrency(usdPending, "USD")
+        : formatCurrency(inrPending, "INR");
+
   const recentProjects = [...projects]
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 5);
@@ -302,7 +334,7 @@ export function Dashboard() {
           />
           <StatCard
             label="Total Earnings"
-            value={`$${stats.totalEarnings.toLocaleString()}`}
+            value={earningsDisplay}
             icon={DollarSign}
             sub="Revenue collected"
             iconBg="bg-violet-100"
@@ -327,7 +359,7 @@ export function Dashboard() {
           />
           <StatCard
             label="Pending Payments"
-            value={`$${stats.pendingPaymentsTotal.toLocaleString()}`}
+            value={pendingDisplay}
             icon={CreditCard}
             sub="Remaining balance"
             iconBg="bg-orange-100"

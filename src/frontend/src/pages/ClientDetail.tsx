@@ -147,7 +147,9 @@ export function ClientDetail() {
     name: "",
     description: "",
     budget: 0,
+    budgetCurrency: "INR",
     paidAmount: 0,
+    paidCurrency: "INR",
     deadline: new Date().toISOString().split("T")[0],
     status: "Pending",
   });
@@ -207,7 +209,9 @@ export function ClientDetail() {
       name: "",
       description: "",
       budget: 0,
+      budgetCurrency: "INR",
       paidAmount: 0,
+      paidCurrency: "INR",
       deadline: new Date().toISOString().split("T")[0],
       status: "Pending",
     });

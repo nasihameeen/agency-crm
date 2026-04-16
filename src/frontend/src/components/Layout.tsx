@@ -15,7 +15,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 const NAV_ITEMS = [
@@ -76,7 +76,6 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   // Tooltip state: which nav item label is being hovered (collapsed mode only)
   const [tooltipLabel, setTooltipLabel] = useState<string | null>(null);
-  const tooltipRefs = useRef<Map<string, HTMLElement>>(new Map());
 
   const isActive = (to: string) =>
     to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
@@ -105,47 +104,79 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex flex-col ${sidebarWidth} flex-shrink-0 fixed inset-y-0 left-0 z-30 bg-sidebar border-r border-sidebar-border transition-all duration-300 overflow-hidden`}
+        className={`hidden md:flex flex-col ${sidebarWidth} flex-shrink-0 fixed inset-y-0 left-0 z-30 bg-sidebar border-r border-sidebar-border transition-all duration-300`}
       >
         {/* Top gradient accent bar */}
         <div className="h-0.5 w-full gradient-accent flex-shrink-0" />
 
         {/* Branding header + collapse toggle */}
         <div
-          className={`flex items-center h-16 border-b border-sidebar-border flex-shrink-0 relative ${collapsed ? "justify-center px-0" : "gap-3 px-5"}`}
+          className={`flex items-center border-b border-sidebar-border flex-shrink-0 ${collapsed ? "flex-col justify-center gap-1.5 px-0 py-3 min-h-[4.5rem]" : "h-16 gap-3 px-4"}`}
         >
-          <div className="size-8 rounded-xl gradient-accent flex items-center justify-center flex-shrink-0 shadow-glow-sm">
-            <Briefcase className="size-4 text-white" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="font-display font-bold text-sidebar-foreground text-sm leading-tight tracking-tight">
-                AgencyOS
-              </p>
-              <p className="text-[10px] text-sidebar-muted leading-tight font-body">
-                Management Suite
-              </p>
-            </div>
+          {collapsed ? (
+            /* Collapsed: logo icon on top, toggle below */
+            <>
+              <div className="size-8 rounded-xl gradient-accent flex items-center justify-center flex-shrink-0 shadow-glow-sm">
+                <Briefcase className="size-4 text-white" />
+              </div>
+              {/* Collapse toggle — always visible, stacked below logo in collapsed mode */}
+              <div className="relative group/toggle">
+                <button
+                  type="button"
+                  data-ocid="nav.sidebar_collapse_toggle"
+                  onClick={toggleCollapse}
+                  aria-label="Expand sidebar"
+                  className="size-6 rounded-lg flex items-center justify-center border border-sidebar-border bg-sidebar hover:bg-sidebar-accent text-sidebar-muted hover:text-sidebar-foreground transition-smooth flex-shrink-0"
+                >
+                  <ChevronRight className="size-3" />
+                </button>
+                {/* Tooltip for toggle button */}
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none opacity-0 group-hover/toggle:opacity-100 transition-opacity duration-150">
+                  <div className="bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-premium whitespace-nowrap">
+                    Expand sidebar
+                  </div>
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-foreground" />
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Expanded: logo + name + toggle in a row */
+            <>
+              <div className="size-8 rounded-xl gradient-accent flex items-center justify-center flex-shrink-0 shadow-glow-sm">
+                <Briefcase className="size-4 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-display font-bold text-sidebar-foreground text-sm leading-tight tracking-tight">
+                  AgencyOS
+                </p>
+                <p className="text-[10px] text-sidebar-muted leading-tight font-body">
+                  Management Suite
+                </p>
+              </div>
+              {/* Collapse toggle — always visible at right edge when expanded */}
+              <div className="relative group/toggle">
+                <button
+                  type="button"
+                  data-ocid="nav.sidebar_collapse_toggle"
+                  onClick={toggleCollapse}
+                  aria-label="Collapse sidebar"
+                  className="size-6 rounded-lg flex items-center justify-center border border-sidebar-border bg-sidebar hover:bg-sidebar-accent text-sidebar-muted hover:text-sidebar-foreground transition-smooth flex-shrink-0"
+                >
+                  <ChevronLeft className="size-3" />
+                </button>
+                {/* Tooltip for toggle button */}
+                <div className="absolute right-0 top-full mt-1.5 z-50 pointer-events-none opacity-0 group-hover/toggle:opacity-100 transition-opacity duration-150">
+                  <div className="bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-premium whitespace-nowrap">
+                    Collapse sidebar
+                  </div>
+                </div>
+              </div>
+            </>
           )}
-
-          {/* Collapse toggle button — desktop only */}
-          <button
-            type="button"
-            data-ocid="nav.sidebar_collapse_toggle"
-            onClick={toggleCollapse}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={`size-6 rounded-lg flex items-center justify-center border border-sidebar-border bg-sidebar hover:bg-sidebar-accent text-sidebar-muted hover:text-sidebar-foreground transition-smooth flex-shrink-0 ${collapsed ? "absolute -right-3 top-1/2 -translate-y-1/2 z-10 size-6 shadow-premium" : ""}`}
-          >
-            {collapsed ? (
-              <ChevronRight className="size-3" />
-            ) : (
-              <ChevronLeft className="size-3" />
-            )}
-          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-visible scrollbar-thin">
           {NAV_ITEMS.map(({ to, label, icon: Icon, ocid }) => {
             const active = isActive(to);
             return (
@@ -154,10 +185,6 @@ export function Layout({ children }: LayoutProps) {
                 className="relative"
                 onMouseEnter={() => collapsed && setTooltipLabel(label)}
                 onMouseLeave={() => setTooltipLabel(null)}
-                ref={(el) => {
-                  if (el) tooltipRefs.current.set(label, el);
-                  else tooltipRefs.current.delete(label);
-                }}
               >
                 <Link
                   to={to}

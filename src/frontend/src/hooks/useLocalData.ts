@@ -1,6 +1,7 @@
 import type {
   ActivityEntry,
   Client,
+  CurrencyType,
   Expense,
   FinanceStats,
   Lead,
@@ -127,7 +128,9 @@ const SAMPLE_PROJECTS: Project[] = [
     description:
       "Complete visual identity overhaul including logo, color palette, typography, and brand guidelines.",
     budget: 8000,
+    budgetCurrency: "INR",
     paidAmount: 4000,
+    paidCurrency: "INR",
     deadline: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
     status: "InProgress",
     tasks: [
@@ -181,7 +184,9 @@ const SAMPLE_PROJECTS: Project[] = [
     description:
       "Full-stack e-commerce platform with product management, checkout, and admin dashboard.",
     budget: 15000,
+    budgetCurrency: "INR",
     paidAmount: 15000,
+    paidCurrency: "INR",
     deadline: new Date(Date.now() - 5 * 86400000).toISOString().split("T")[0],
     status: "Completed",
     tasks: [
@@ -228,7 +233,9 @@ const SAMPLE_PROJECTS: Project[] = [
     description:
       "3-month SEO content plan with keyword research, blog posts, and backlink strategy.",
     budget: 4500,
+    budgetCurrency: "INR",
     paidAmount: 0,
+    paidCurrency: "INR",
     deadline: new Date(Date.now() + 45 * 86400000).toISOString().split("T")[0],
     status: "Pending",
     tasks: [
@@ -266,6 +273,18 @@ function saveToStorage<T>(key: string, value: T): void {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Ensure projects loaded from localStorage have currency fields.
+ * Existing records without them default to 'INR' for backward compatibility.
+ */
+function migrateProjects(projects: Project[]): Project[] {
+  return projects.map((p) => ({
+    ...p,
+    budgetCurrency: p.budgetCurrency ?? ("INR" as CurrencyType),
+    paidCurrency: p.paidCurrency ?? ("INR" as CurrencyType),
+  }));
 }
 
 /** Compute dashboard stats from current clients and projects lists. */
@@ -329,7 +348,7 @@ export function useLocalData() {
     loadFromStorage(CLIENTS_KEY, SAMPLE_CLIENTS),
   );
   const [projects, setProjects] = useState<Project[]>(() =>
-    loadFromStorage(PROJECTS_KEY, SAMPLE_PROJECTS),
+    migrateProjects(loadFromStorage(PROJECTS_KEY, SAMPLE_PROJECTS)),
   );
   const [expenses, setExpenses] = useState<Expense[]>(() =>
     loadFromStorage(EXPENSES_KEY, [] as Expense[]),
@@ -339,11 +358,12 @@ export function useLocalData() {
   );
 
   const saveClient = useCallback((client: Client) => {
+    const updated: Client = { ...client, lastActivityAt: Date.now() };
     setClients((prev) => {
-      const exists = prev.some((c) => c.id === client.id);
+      const exists = prev.some((c) => c.id === updated.id);
       const next = exists
-        ? prev.map((c) => (c.id === client.id ? client : c))
-        : [...prev, client];
+        ? prev.map((c) => (c.id === updated.id ? updated : c))
+        : [...prev, updated];
       saveToStorage(CLIENTS_KEY, next);
       return next;
     });
@@ -369,6 +389,14 @@ export function useLocalData() {
         ? prev.map((p) => (p.id === project.id ? project : p))
         : [...prev, project];
       saveToStorage(PROJECTS_KEY, next);
+      return next;
+    });
+    // Touch the parent client's lastActivityAt whenever a project is saved.
+    setClients((prev) => {
+      const next = prev.map((c) =>
+        c.id === project.clientId ? { ...c, lastActivityAt: Date.now() } : c,
+      );
+      saveToStorage(CLIENTS_KEY, next);
       return next;
     });
   }, []);

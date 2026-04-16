@@ -26,17 +26,21 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
-import type { Project, ProjectStatus } from "@/types";
+import type { CurrencyType, Project, ProjectStatus } from "@/types";
 import {
   type DeadlineStatus,
   type PaymentStatus as PaymentStatusType,
+  formatCurrency,
   getDeadlineStatus,
   getPaymentStatus,
+  getTaskProgress,
 } from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronRight,
   FolderOpen,
+  LayoutGrid,
+  LayoutList,
   Pencil,
   Plus,
   Search,
@@ -44,6 +48,8 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+
+type ViewMode = "list" | "grid";
 
 type ProjectForm = Omit<
   Project,
@@ -55,7 +61,9 @@ const EMPTY_FORM: ProjectForm = {
   name: "",
   description: "",
   budget: 0,
+  budgetCurrency: "INR",
   paidAmount: 0,
+  paidCurrency: "INR",
   deadline: new Date().toISOString().split("T")[0],
   status: "Pending",
 };
@@ -64,6 +72,11 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "Pending", label: "Pending" },
   { value: "InProgress", label: "In Progress" },
   { value: "Completed", label: "Completed" },
+];
+
+const CURRENCY_OPTIONS: { value: CurrencyType; label: string }[] = [
+  { value: "INR", label: "₹ INR" },
+  { value: "USD", label: "$ USD" },
 ];
 
 const STATUS_FILTER_TABS = [
@@ -83,6 +96,26 @@ const DEADLINE_FILTER_TABS: Array<DeadlineStatus | "All"> = [
   "Overdue",
   "Upcoming",
 ];
+
+/** Smart sort: overdue first → nearest deadline → no deadline last */
+function sortProjects(projects: Project[]): Project[] {
+  const now = Date.now();
+  return [...projects].sort((a, b) => {
+    const aMs = a.deadline ? new Date(a.deadline).getTime() : null;
+    const bMs = b.deadline ? new Date(b.deadline).getTime() : null;
+    const aOverdue = aMs !== null && aMs < now;
+    const bOverdue = bMs !== null && bMs < now;
+
+    if (aOverdue && !bOverdue) return -1;
+    if (!aOverdue && bOverdue) return 1;
+
+    // Both overdue or both not — sort by deadline asc; no deadline goes last
+    if (aMs === null && bMs === null) return 0;
+    if (aMs === null) return 1;
+    if (bMs === null) return -1;
+    return aMs - bMs;
+  });
+}
 
 function FilterPill({
   label,
@@ -117,6 +150,10 @@ export function ProjectsPage() {
   const { clients, projects, saveProject, deleteProject } = useLocalData();
   const { success, error } = useToast();
 
+  // View toggle — default to list
+  const [view, setView] = useState<ViewMode>("list");
+
+  // Shared filter state persists across view switches
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "All">(
     "All",
@@ -146,19 +183,21 @@ export function ProjectsPage() {
     setDeadlineFilter("All");
   }
 
-  const filtered = projects.filter((p) => {
-    const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "All" || p.status === statusFilter;
-    const matchPayment =
-      paymentFilter === "All" ||
-      getPaymentStatus(p.budget, p.paidAmount) === paymentFilter;
-    const matchDeadline =
-      deadlineFilter === "All" ||
-      getDeadlineStatus(p.deadline) === deadlineFilter;
-    return matchSearch && matchStatus && matchPayment && matchDeadline;
-  });
+  const filtered = sortProjects(
+    projects.filter((p) => {
+      const matchSearch =
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.description.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "All" || p.status === statusFilter;
+      const matchPayment =
+        paymentFilter === "All" ||
+        getPaymentStatus(p.budget, p.paidAmount) === paymentFilter;
+      const matchDeadline =
+        deadlineFilter === "All" ||
+        getDeadlineStatus(p.deadline) === deadlineFilter;
+      return matchSearch && matchStatus && matchPayment && matchDeadline;
+    }),
+  );
 
   function openAdd() {
     setEditTarget(null);
@@ -173,7 +212,9 @@ export function ProjectsPage() {
       name: p.name,
       description: p.description,
       budget: p.budget,
+      budgetCurrency: p.budgetCurrency ?? "INR",
       paidAmount: p.paidAmount,
+      paidCurrency: p.paidCurrency ?? "INR",
       deadline: p.deadline,
       status: p.status,
     });
@@ -230,14 +271,48 @@ export function ProjectsPage() {
               )}
             </p>
           </div>
-          <Button
-            data-ocid="projects.add_button"
-            onClick={openAdd}
-            className="gap-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200"
-            variant="outline"
-          >
-            <Plus className="size-4" /> New Project
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div
+              className="flex items-center bg-white/10 border border-white/20 rounded-lg p-0.5 backdrop-blur-sm"
+              aria-label="View mode"
+            >
+              <button
+                type="button"
+                data-ocid="projects.view_list_toggle"
+                onClick={() => setView("list")}
+                className={[
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200",
+                  view === "list"
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-white/80 hover:text-white",
+                ].join(" ")}
+              >
+                <LayoutList className="size-3.5" /> List
+              </button>
+              <button
+                type="button"
+                data-ocid="projects.view_grid_toggle"
+                onClick={() => setView("grid")}
+                className={[
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200",
+                  view === "grid"
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-white/80 hover:text-white",
+                ].join(" ")}
+              >
+                <LayoutGrid className="size-3.5" /> Grid
+              </button>
+            </div>
+            <Button
+              data-ocid="projects.add_button"
+              onClick={openAdd}
+              className="gap-2 bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200"
+              variant="outline"
+            >
+              <Plus className="size-4" /> New Project
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -358,10 +433,224 @@ export function ProjectsPage() {
             onCta={hasActiveFilters ? clearFilters : undefined}
           />
         </Card>
+      ) : view === "list" ? (
+        /* ── LIST VIEW ─────────────────────────────────────────────── */
+        <Card className="!p-0 overflow-hidden">
+          <div className="overflow-x-auto" data-ocid="projects.list">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/40">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Project Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Client
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Payment
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Budget
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Paid
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Remaining
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Deadline
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap min-w-[120px]">
+                    Progress
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {filtered.map((project, i) => {
+                  const client = clients.find((c) => c.id === project.clientId);
+                  const budgetCurrency = project.budgetCurrency ?? "INR";
+                  const paidCurrency = project.paidCurrency ?? "INR";
+                  const remaining = project.budget - project.paidAmount;
+                  const paymentStatus = getPaymentStatus(
+                    project.budget,
+                    project.paidAmount,
+                  );
+                  const deadlineStatus = getDeadlineStatus(project.deadline);
+                  const {
+                    percent: taskPct,
+                    done,
+                    total,
+                  } = getTaskProgress(project.tasks);
+                  const isOverdue = deadlineStatus === "Overdue";
+
+                  return (
+                    <tr
+                      key={project.id}
+                      data-ocid={`projects.item.${i + 1}`}
+                      className={[
+                        "group transition-colors duration-150 cursor-pointer",
+                        isOverdue
+                          ? "bg-destructive/[0.03] hover:bg-destructive/[0.06]"
+                          : "hover:bg-muted/40",
+                      ].join(" ")}
+                      tabIndex={0}
+                      onClick={() =>
+                        navigate({
+                          to: "/projects/$id",
+                          params: { id: project.id },
+                        })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          navigate({
+                            to: "/projects/$id",
+                            params: { id: project.id },
+                          });
+                        }
+                      }}
+                    >
+                      {/* Project Name */}
+                      <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap max-w-[200px]">
+                        <span className="truncate block">{project.name}</span>
+                        {project.description && (
+                          <span className="text-xs text-muted-foreground font-normal truncate block max-w-[180px]">
+                            {project.description}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Client */}
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        <span className="truncate block max-w-[140px]">
+                          {client?.name ?? "—"}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <StatusBadge status={project.status} size="sm" />
+                      </td>
+
+                      {/* Payment Status */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <PaymentBadge status={paymentStatus} size="sm" />
+                      </td>
+
+                      {/* Budget */}
+                      <td className="px-4 py-3 text-right font-mono text-foreground whitespace-nowrap tabular-nums">
+                        {formatCurrency(project.budget, budgetCurrency)}
+                      </td>
+
+                      {/* Paid */}
+                      <td className="px-4 py-3 text-right font-mono text-success whitespace-nowrap tabular-nums">
+                        {formatCurrency(project.paidAmount, paidCurrency)}
+                      </td>
+
+                      {/* Remaining */}
+                      <td
+                        className={[
+                          "px-4 py-3 text-right font-mono whitespace-nowrap tabular-nums",
+                          remaining > project.budget * 0.5
+                            ? "text-destructive font-semibold"
+                            : "text-muted-foreground",
+                        ].join(" ")}
+                      >
+                        {formatCurrency(remaining, budgetCurrency)}
+                      </td>
+
+                      {/* Deadline */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <DeadlineBadge
+                          deadline={project.deadline}
+                          status={project.status}
+                          size="sm"
+                        />
+                      </td>
+
+                      {/* Progress */}
+                      <td className="px-4 py-3 min-w-[120px]">
+                        {total > 0 ? (
+                          <div className="space-y-1">
+                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${taskPct}%`,
+                                  background:
+                                    taskPct === 100
+                                      ? "oklch(0.52 0.18 142)"
+                                      : "linear-gradient(90deg, oklch(0.52 0.18 142), oklch(0.62 0.20 275))",
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {done}/{total} tasks
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50">
+                            —
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td
+                        className="px-4 py-3 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            data-ocid={`projects.edit_button.${i + 1}`}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 hover:bg-muted"
+                            title="Edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(project);
+                            }}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            data-ocid={`projects.delete_button.${i + 1}`}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/5"
+                            title="Delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(project);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                          <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       ) : (
+        /* ── GRID VIEW ─────────────────────────────────────────────── */
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((project, i) => {
             const client = clients.find((c) => c.id === project.clientId);
+            const budgetCurrency = project.budgetCurrency ?? "INR";
+            const paidCurrency = project.paidCurrency ?? "INR";
             const remaining = project.budget - project.paidAmount;
             const paymentStatus = getPaymentStatus(
               project.budget,
@@ -424,7 +713,7 @@ export function ProjectsPage() {
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs">
                       <span className="text-success font-semibold">
-                        Paid ${project.paidAmount.toLocaleString()}
+                        Paid {formatCurrency(project.paidAmount, paidCurrency)}
                       </span>
                       <span
                         className={
@@ -433,7 +722,7 @@ export function ProjectsPage() {
                             : "text-muted-foreground"
                         }
                       >
-                        ${remaining.toLocaleString()} left
+                        {formatCurrency(remaining, budgetCurrency)} left
                       </span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
@@ -504,13 +793,14 @@ export function ProjectsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md" data-ocid="projects.dialog">
+        <DialogContent className="max-w-lg" data-ocid="projects.dialog">
           <DialogHeader>
             <DialogTitle>
               {editTarget ? "Edit Project" : "New Project"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Client */}
             <div className="space-y-1.5">
               <Label>
                 Client <span className="text-destructive">*</span>
@@ -531,6 +821,8 @@ export function ProjectsPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Project Name */}
             <div className="space-y-1.5">
               <Label>
                 Project Name <span className="text-destructive">*</span>
@@ -543,6 +835,8 @@ export function ProjectsPage() {
                 }
               />
             </div>
+
+            {/* Description */}
             <div className="space-y-1.5">
               <Label>Description</Label>
               <Textarea
@@ -555,9 +849,11 @@ export function ProjectsPage() {
                 rows={3}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Budget ($)</Label>
+
+            {/* Budget + Currency */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <Label>Budget</Label>
                 <Input
                   data-ocid="projects.budget_input"
                   type="number"
@@ -569,7 +865,35 @@ export function ProjectsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Paid ($)</Label>
+                <Label>Currency</Label>
+                <Select
+                  value={form.budgetCurrency}
+                  onValueChange={(v) =>
+                    setForm((p) => ({
+                      ...p,
+                      budgetCurrency: v as CurrencyType,
+                      paidCurrency: v as CurrencyType,
+                    }))
+                  }
+                >
+                  <SelectTrigger data-ocid="projects.budget_currency_select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Paid Amount + Currency */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <Label>Paid Amount</Label>
                 <Input
                   data-ocid="projects.paid_input"
                   type="number"
@@ -583,7 +907,32 @@ export function ProjectsPage() {
                   }
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label>Currency</Label>
+                <Select
+                  value={form.paidCurrency}
+                  onValueChange={(v) =>
+                    setForm((p) => ({
+                      ...p,
+                      paidCurrency: v as CurrencyType,
+                    }))
+                  }
+                >
+                  <SelectTrigger data-ocid="projects.paid_currency_select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {/* Deadline + Status */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Deadline</Label>
@@ -618,6 +967,7 @@ export function ProjectsPage() {
               </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button
               variant="outline"

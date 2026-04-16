@@ -2,7 +2,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { StatBadge } from "@/components/StatBadge";
 import { useLocalData } from "@/hooks/useLocalData";
-import { getDeadlineStatus, getPaymentStatus } from "@/types";
+import { formatCurrency, getDeadlineStatus, getPaymentStatus } from "@/types";
 import type { Expense, Project } from "@/types";
 import {
   Activity,
@@ -275,7 +275,7 @@ function ChartTooltip({
             </span>
           </span>
           <span className="font-bold" style={{ color: item.color }}>
-            {currency ? `$${item.value.toLocaleString()}` : item.value}
+            {currency ? formatCurrency(item.value, "INR") : item.value}
           </span>
         </div>
       ))}
@@ -355,7 +355,7 @@ export function AnalyticsPage() {
                 Total Revenue
               </p>
               <p className="text-2xl font-display font-bold text-white mt-0.5">
-                ${totalRevenue.toLocaleString()}
+                {formatCurrency(totalRevenue, "INR")}
               </p>
             </div>
             <div className="w-px h-10 bg-white/10" />
@@ -368,7 +368,8 @@ export function AnalyticsPage() {
                   netProfit >= 0 ? "text-emerald-300" : "text-rose-300"
                 }`}
               >
-                {netProfit >= 0 ? "+" : ""}${netProfit.toLocaleString()}
+                {netProfit >= 0 ? "+" : ""}
+                {formatCurrency(Math.abs(netProfit), "INR")}
               </p>
             </div>
             <div className="w-px h-10 bg-white/10" />
@@ -404,28 +405,28 @@ export function AnalyticsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <MetricCard
               label="Total Revenue"
-              value={`$${totalRevenue.toLocaleString()}`}
+              value={formatCurrency(totalRevenue, "INR")}
               icon={DollarSign}
               accent="green"
-              sub="Collected from projects"
+              sub="Collected from projects (INR)"
               trend={totalRevenue > 0 ? "up" : "neutral"}
               trendLabel={totalRevenue > 0 ? "↑ Active" : "No data"}
             />
             <MetricCard
               label="Total Expenses"
-              value={`$${totalExpenses.toLocaleString()}`}
+              value={formatCurrency(totalExpenses, "INR")}
               icon={TrendingDown}
               accent="red"
-              sub="All logged expenses"
+              sub="All logged expenses (INR)"
               trend={totalExpenses > 0 ? "down" : "neutral"}
               trendLabel={totalExpenses > 0 ? "↓ Outflow" : "No expenses"}
             />
             <MetricCard
               label="Net Profit"
-              value={`${netProfit >= 0 ? "+" : ""}$${netProfit.toLocaleString()}`}
+              value={`${netProfit >= 0 ? "+" : ""}${formatCurrency(Math.abs(netProfit), "INR")}`}
               icon={TrendingUp}
               accent={netProfit >= 0 ? "green" : "red"}
-              sub={netProfit >= 0 ? "Profitable" : "Net loss"}
+              sub={netProfit >= 0 ? "Profitable (INR)" : "Net loss (INR)"}
               trend={netProfit >= 0 ? "up" : "down"}
               trendLabel={netProfit >= 0 ? "↑ Profitable" : "↓ Net loss"}
               isPremium
@@ -493,7 +494,7 @@ export function AnalyticsPage() {
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v: number) =>
-                        `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                        v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`
                       }
                     />
                     <Tooltip content={<ChartTooltip currency />} />
@@ -646,7 +647,7 @@ export function AnalyticsPage() {
                           axisLine={false}
                           tickLine={false}
                           tickFormatter={(v: number) =>
-                            `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`
+                            v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`
                           }
                         />
                         <YAxis

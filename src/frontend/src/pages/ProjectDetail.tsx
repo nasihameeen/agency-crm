@@ -24,8 +24,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useToast } from "@/hooks/useToast";
-import { getPaymentStatus } from "@/types";
-import type { FileLink, Project, ProjectStatus, Task } from "@/types";
+import { formatCurrency, getPaymentStatus } from "@/types";
+import type {
+  CurrencyType,
+  FileLink,
+  Project,
+  ProjectStatus,
+  Task,
+} from "@/types";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -47,6 +53,11 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
   { value: "Pending", label: "Pending" },
   { value: "InProgress", label: "In Progress" },
   { value: "Completed", label: "Completed" },
+];
+
+const CURRENCY_OPTIONS: { value: CurrencyType; label: string }[] = [
+  { value: "INR", label: "₹ INR" },
+  { value: "USD", label: "$ USD" },
 ];
 
 const PRIORITY_CONFIG = {
@@ -79,6 +90,7 @@ export function ProjectDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentCurrency, setPaymentCurrency] = useState<CurrencyType>("INR");
   const [noteText, setNoteText] = useState("");
   const [taskName, setTaskName] = useState("");
   const [linkLabel, setLinkLabel] = useState("");
@@ -89,13 +101,22 @@ export function ProjectDetail() {
   const [editForm, setEditForm] = useState<
     Pick<
       Project,
-      "name" | "description" | "budget" | "paidAmount" | "deadline" | "status"
+      | "name"
+      | "description"
+      | "budget"
+      | "budgetCurrency"
+      | "paidAmount"
+      | "paidCurrency"
+      | "deadline"
+      | "status"
     >
   >({
     name: project?.name ?? "",
     description: project?.description ?? "",
     budget: project?.budget ?? 0,
+    budgetCurrency: project?.budgetCurrency ?? "INR",
     paidAmount: project?.paidAmount ?? 0,
+    paidCurrency: project?.paidCurrency ?? "INR",
     deadline: project?.deadline ?? "",
     status: project?.status ?? "Pending",
   });
@@ -113,6 +134,8 @@ export function ProjectDetail() {
 
   const p: Project = project;
 
+  const budgetCurrency = p.budgetCurrency ?? "INR";
+  const paidCurrency = p.paidCurrency ?? "INR";
   const remaining = p.budget - p.paidAmount;
   const paymentPct =
     p.budget > 0 ? Math.min(100, (p.paidAmount / p.budget) * 100) : 0;
@@ -145,6 +168,12 @@ export function ProjectDetail() {
     success("Project marked as completed");
   }
 
+  function openPaymentDialog() {
+    setPaymentCurrency(budgetCurrency);
+    setPaymentAmount("");
+    setPaymentOpen(true);
+  }
+
   function handleAddPayment() {
     const amount = Number.parseFloat(paymentAmount);
     if (Number.isNaN(amount) || amount <= 0) {
@@ -152,8 +181,8 @@ export function ProjectDetail() {
       return;
     }
     const newPaid = Math.min(p.budget, p.paidAmount + amount);
-    update({ paidAmount: newPaid });
-    success(`$${amount.toLocaleString()} payment recorded`);
+    update({ paidAmount: newPaid, paidCurrency: paymentCurrency });
+    success(`${formatCurrency(amount, paymentCurrency)} payment recorded`);
     setPaymentAmount("");
     setPaymentOpen(false);
   }
@@ -273,17 +302,17 @@ export function ProjectDetail() {
               {[
                 {
                   label: "Total Budget",
-                  value: `$${p.budget.toLocaleString()}`,
+                  value: formatCurrency(p.budget, budgetCurrency),
                   cls: "text-white",
                 },
                 {
                   label: "Paid",
-                  value: `$${p.paidAmount.toLocaleString()}`,
+                  value: formatCurrency(p.paidAmount, paidCurrency),
                   cls: "text-emerald-300",
                 },
                 {
                   label: "Remaining",
-                  value: `$${remaining.toLocaleString()}`,
+                  value: formatCurrency(remaining, budgetCurrency),
                   cls: isHighUnpaid ? "text-red-300" : "text-white/80",
                 },
               ].map(({ label, value, cls }) => (
@@ -309,7 +338,9 @@ export function ProjectDetail() {
                   name: p.name,
                   description: p.description,
                   budget: p.budget,
+                  budgetCurrency: budgetCurrency,
                   paidAmount: p.paidAmount,
+                  paidCurrency: paidCurrency,
                   deadline: p.deadline,
                   status: p.status,
                 });
@@ -354,7 +385,7 @@ export function ProjectDetail() {
           variant="outline"
           size="sm"
           data-ocid="project_detail.quick_payment_button"
-          onClick={() => setPaymentOpen(true)}
+          onClick={openPaymentDialog}
           className="gap-1.5 h-7 text-xs"
         >
           <DollarSign className="size-3.5" /> Add Payment
@@ -401,12 +432,13 @@ export function ProjectDetail() {
         </div>
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            {Math.round(paymentPct)}% paid
+            {Math.round(paymentPct)}% paid ·{" "}
+            {formatCurrency(remaining, budgetCurrency)} remaining
           </p>
           <button
             type="button"
             data-ocid="project_detail.add_payment_inline_button"
-            onClick={() => setPaymentOpen(true)}
+            onClick={openPaymentDialog}
             className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
           >
             + Add Payment
@@ -688,17 +720,36 @@ export function ProjectDetail() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Remaining</span>
               <span className="font-semibold text-foreground">
-                ${remaining.toLocaleString()}
+                {formatCurrency(remaining, budgetCurrency)}
               </span>
             </div>
             <div className="space-y-1.5">
-              <Label>Amount to add ($)</Label>
+              <Label>Currency</Label>
+              <Select
+                value={paymentCurrency}
+                onValueChange={(v) => setPaymentCurrency(v as CurrencyType)}
+              >
+                <SelectTrigger data-ocid="project_detail.payment_currency_select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                Amount ({paymentCurrency === "INR" ? "₹ INR" : "$ USD"})
+              </Label>
               <Input
                 data-ocid="project_detail.payment_amount_input"
                 type="number"
                 min={1}
-                max={remaining}
-                placeholder={`Max $${remaining.toLocaleString()}`}
+                placeholder="Enter amount"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddPayment()}
@@ -763,7 +814,7 @@ export function ProjectDetail() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Budget ($)</Label>
+                <Label>Budget</Label>
                 <Input
                   type="number"
                   min={0}
@@ -777,7 +828,32 @@ export function ProjectDetail() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Paid ($)</Label>
+                <Label>Budget Currency</Label>
+                <Select
+                  value={editForm.budgetCurrency}
+                  onValueChange={(v) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      budgetCurrency: v as CurrencyType,
+                    }))
+                  }
+                >
+                  <SelectTrigger data-ocid="project_detail.edit_budget_currency_select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Paid Amount</Label>
                 <Input
                   type="number"
                   min={0}
@@ -789,6 +865,29 @@ export function ProjectDetail() {
                     }))
                   }
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Paid Currency</Label>
+                <Select
+                  value={editForm.paidCurrency}
+                  onValueChange={(v) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      paidCurrency: v as CurrencyType,
+                    }))
+                  }
+                >
+                  <SelectTrigger data-ocid="project_detail.edit_paid_currency_select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_OPTIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

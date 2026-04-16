@@ -1293,7 +1293,7 @@ export default function LeadsPage() {
   } = useLocalData();
   const { success } = useToast();
 
-  const [view, setView] = useState<ActiveView>("pipeline");
+  const [view, setView] = useState<ActiveView>("list");
   const [addOpen, setAddOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
@@ -1466,8 +1466,8 @@ export default function LeadsPage() {
     label: string;
     icon: React.FC<{ className?: string }>;
   }[] = [
-    { value: "pipeline", label: "Pipeline", icon: Rows3 },
     { value: "list", label: "List", icon: LayoutList },
+    { value: "pipeline", label: "Pipeline", icon: Rows3 },
     { value: "import", label: "Import", icon: Upload },
   ];
 
@@ -1624,7 +1624,7 @@ export default function LeadsPage() {
               onImport={(imported) => {
                 for (const l of imported) addLead(l);
                 setImportToast(imported.length);
-                handleViewChange("pipeline");
+                handleViewChange("list");
               }}
             />
           </div>

@@ -1,6 +1,7 @@
 export type ProjectStatus = "Pending" | "InProgress" | "Completed";
 export type PaymentStatus = "Paid" | "Partial" | "Unpaid";
 export type DeadlineStatus = "Overdue" | "Upcoming" | "Normal";
+export type CurrencyType = "INR" | "USD";
 
 // ---------------------------------------------------------------------------
 // Lead Management
@@ -84,7 +85,9 @@ export interface Project {
   name: string;
   description: string;
   budget: number;
+  budgetCurrency: CurrencyType; // defaults to 'INR' for backward compat
   paidAmount: number;
+  paidCurrency: CurrencyType; // defaults to 'INR' for backward compat
   deadline: string; // ISO date string
   status: ProjectStatus;
   tasks: Task[];
@@ -101,6 +104,7 @@ export interface Client {
   businessName: string;
   notes: Note[];
   createdAt: number;
+  lastActivityAt?: number; // timestamp (ms), updated on save/project changes
 }
 
 export interface Expense {
@@ -131,6 +135,19 @@ export interface FinanceStats {
 // ---------------------------------------------------------------------------
 // Helper functions
 // ---------------------------------------------------------------------------
+
+/**
+ * Format a currency amount with the appropriate symbol and thousands separators.
+ * Examples: formatCurrency(8000, 'INR') → '₹ 8,000'
+ *           formatCurrency(500, 'USD')  → '$ 500'
+ */
+export function formatCurrency(amount: number, currency: CurrencyType): string {
+  const symbol = currency === "INR" ? "₹" : "$";
+  const formatted = Math.abs(amount).toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  });
+  return `${symbol} ${formatted}`;
+}
 
 /** Derive payment status from budget and amount paid. */
 export function getPaymentStatus(
